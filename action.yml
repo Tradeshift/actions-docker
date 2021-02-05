@@ -1,11 +1,36 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'docker action'
+description: 'does auth, build and push'
+author: 'Tradeshift'
 inputs:
-  milliseconds: # change this
+  username:
+    required: false
+    description: docker registry username
+    default: _json_key
+  password:
+    required: false
+    description: docker registry password
+  registry:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: docker registry
+    default: eu.gcr.io
+  context:
+    required: true
+    description: docker context
+    default: .
+  file:
+    required: false
+    description: path to dockerfile
+  labels:
+    required: false
+    description: list of labels
+  tags:
+    required: false
+    description: list of tags
+  push:
+    required: false
+    description: wether to push or not
+    default: "true"
 runs:
   using: 'node12'
   main: 'dist/index.js'
+  post: 'dist/index.js'
