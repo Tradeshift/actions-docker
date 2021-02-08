@@ -1,0 +1,40 @@
+name: 'master'
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-
+      - run: |
+          npm ci
+          npm run all
+
+  sonarqube:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            npm-
+      - run: npm ci
+      - uses: tradeshift/actions-sonarqube/scanner@v1
+        with:
+          caCert: ${{ secrets.MTLS_CACERT }}
+          clientCert: ${{ secrets.MTLS_CERT }}
+          clientKey: ${{ secrets.MTLS_KEY }}
+          token: ${{ secrets.SONAR_TOKEN }}
