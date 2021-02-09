@@ -38,3 +38,5 @@ jobs:
           clientCert: ${{ secrets.MTLS_CERT }}
           clientKey: ${{ secrets.MTLS_KEY }}
           token: ${{ secrets.SONAR_TOKEN }}
+          args: |
+            -Dsonar.exclusions=dist/**
