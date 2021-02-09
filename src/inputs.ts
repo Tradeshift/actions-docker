@@ -2,30 +2,28 @@ import csvparse from 'csv-parse/lib/sync';
 import {getInput} from '@actions/core';
 
 export interface Inputs {
-  // login inputs
-  username: string;
-  password: string;
-  registry: string;
-  // build / push inputs
+  buildArgs: string[];
   context: string;
   file: string;
   labels: string[];
-  buildArgs: string[];
-  tags: string[];
+  password: string;
   push: boolean;
+  repository: string;
+  tags: string[];
+  username: string;
 }
 
 export async function getInputs(): Promise<Inputs> {
   return {
-    username: getInput('username'),
-    password: getInput('password'),
-    registry: getInput('registry'),
+    buildArgs: await getInputList('build-args'),
     context: getInput('context'),
     file: getInput('file'),
     labels: await getInputList('labels'),
-    buildArgs: await getInputList('build-args'),
+    password: getInput('password'),
+    push: /true/i.test(getInput('push')),
+    repository: getInput('repository'),
     tags: await getInputList('tags'),
-    push: /true/i.test(getInput('push'))
+    username: getInput('username')
   };
 }
 
