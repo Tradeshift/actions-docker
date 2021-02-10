@@ -1,5 +1,6 @@
 import csvparse from 'csv-parse/lib/sync';
 import {getInput} from '@actions/core';
+import {context} from '@actions/github';
 
 export interface Inputs {
   buildArgs: string[];
@@ -21,10 +22,14 @@ export async function getInputs(): Promise<Inputs> {
     labels: await getInputList('labels'),
     password: getInput('password'),
     push: /true/i.test(getInput('push')),
-    repository: getInput('repository'),
+    repository: getInput('repository') || defaultRepository(),
     tags: await getInputList('tags'),
     username: getInput('username')
   };
+}
+
+function defaultRepository(): string {
+  return `eu.gcr.io/tradeshift-base/${context.repo.repo}`;
 }
 
 async function getInputList(

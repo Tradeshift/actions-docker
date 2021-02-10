@@ -1,7 +1,6 @@
 import {info, warning, startGroup, endGroup} from '@actions/core';
 import {exec} from './exec';
 import {Inputs} from './inputs';
-import {context} from '@actions/github';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
@@ -53,19 +52,11 @@ export function isDockerhubRepository(repository: string): boolean {
 }
 
 async function shaTag(repository: string): Promise<string> {
-  const sha = await getSHA();
-  if (repository === '') {
-    repository = `eu.gcr.io/tradeshift-base/${context.repo.repo}`;
-  }
-  return `${repository}:${sha}`;
-}
-
-async function getSHA(): Promise<string> {
   const res = await exec('git', ['rev-parse', 'HEAD'], true);
   if (res.stderr !== '' && !res.success) {
     throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
   }
-  return res.stdout.trim();
+  return `${repository}:${res.stdout.trim()}`;
 }
 
 export async function login(
