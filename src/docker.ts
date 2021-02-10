@@ -1,6 +1,7 @@
 import {info, warning, startGroup, endGroup} from '@actions/core';
 import {exec} from './exec';
 import {Inputs} from './inputs';
+import {context} from '@actions/github';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
@@ -25,6 +26,7 @@ async function getBuildArgs(inputs: Inputs): Promise<string[]> {
   await asyncForEach(inputs.tags, async tag => {
     args.push('--tag', tag);
   });
+  args.push('--tag', await shaTag(inputs.repository));
   if (inputs.push) {
     args.push('--push');
   }
@@ -32,8 +34,42 @@ async function getBuildArgs(inputs: Inputs): Promise<string[]> {
   return args;
 }
 
+const registryRegex = RegExp('^[a-zA-Z0-9-.]+');
+
+export function getRegistry(repository: string): string {
+  const match = registryRegex.exec(repository);
+  if (match === null) {
+    throw new Error(`could not determine registry: ${repository}`);
+  }
+  if (match[0].includes('.')) {
+    return match[0];
+  }
+  return '';
+}
+
+export function isDockerhubRepository(repository: string): boolean {
+  const registry = getRegistry(repository);
+  return registry === '';
+}
+
+async function shaTag(repository: string): Promise<string> {
+  const sha = await getSHA();
+  if (repository === '') {
+    repository = `eu.gcr.io/tradeshift-base/${context.repo.repo}`;
+  }
+  return `${repository}:${sha}`;
+}
+
+async function getSHA(): Promise<string> {
+  const res = await exec('git', ['rev-parse', 'HEAD'], true);
+  if (res.stderr !== '' && !res.success) {
+    throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
+  }
+  return res.stdout.trim();
+}
+
 export async function login(
-  registry: string,
+  repository: string,
   username: string,
   password: string
 ): Promise<void> {
@@ -43,9 +79,11 @@ export async function login(
     throw new Error('Username and password required');
   }
 
+  const registry = getRegistry(repository);
+
   const args = ['login', '--password-stdin', '--username', username];
 
-  if (registry) {
+  if (registry !== '') {
     args.push(registry);
     info(`🔑 Logging into ${registry}...`);
   } else {

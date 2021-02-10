@@ -2,17 +2,9 @@ name: 'docker action'
 description: 'does auth, build and push'
 author: 'Tradeshift'
 inputs:
-  username:
+  build-args:
     required: false
-    description: docker registry username
-    default: _json_key
-  password:
-    required: false
-    description: docker registry password
-  registry:
-    required: true
-    description: docker registry
-    default: eu.gcr.io
+    description: list of build args
   context:
     required: true
     description: docker context
@@ -23,13 +15,27 @@ inputs:
   labels:
     required: false
     description: list of labels
-  tags:
+  password:
     required: false
-    description: list of tags
+    description: >
+      Password for docker registry detected from the repository.
   push:
     required: false
     description: wether to push or not
     default: "true"
+  repository:
+    required: false
+    description: >
+      The repository where default tags will be pushed. If not specified this
+      will default to eu.gcr.io/tradeshift-base/<repo-name>
+  tags:
+    required: false
+    description: list of tags
+  username:
+    required: false
+    description: >
+      Username for docker registry detected from the repository.
+    default: _json_key
 runs:
   using: 'node12'
   main: 'dist/index.js'
