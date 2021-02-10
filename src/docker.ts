@@ -60,7 +60,7 @@ async function shaTag(repository: string): Promise<string> {
 }
 
 export async function login(
-  repository: string,
+  registry: string,
   username: string,
   password: string
 ): Promise<void> {
@@ -69,8 +69,6 @@ export async function login(
   if (!username || !password) {
     throw new Error('Username and password required');
   }
-
-  const registry = getRegistry(repository);
 
   const args = ['login', '--password-stdin', '--username', username];
 

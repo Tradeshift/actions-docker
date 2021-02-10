@@ -13,7 +13,8 @@ async function run(): Promise<void> {
     state.setIsPost();
 
     const inputs = await getInputs();
-    await docker.login(inputs.repository, inputs.username, inputs.password);
+    const registry = docker.getRegistry(inputs.repository);
+    await docker.login(registry, inputs.username, inputs.password);
     await buildx.setup();
     await docker.build(inputs);
   } catch (error) {

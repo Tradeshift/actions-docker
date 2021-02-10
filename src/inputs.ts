@@ -1,6 +1,7 @@
 import csvparse from 'csv-parse/lib/sync';
 import {getInput} from '@actions/core';
 import {context} from '@actions/github';
+import {getECRPassword, isECRRepository} from './aws';
 
 export interface Inputs {
   buildArgs: string[];
@@ -15,7 +16,7 @@ export interface Inputs {
 }
 
 export async function getInputs(): Promise<Inputs> {
-  return {
+  const inputs: Inputs = {
     buildArgs: await getInputList('build-args'),
     context: getInput('context'),
     file: getInput('file'),
@@ -26,6 +27,11 @@ export async function getInputs(): Promise<Inputs> {
     tags: await getInputList('tags'),
     username: getInput('username')
   };
+  if (isECRRepository(inputs.repository)) {
+    inputs.username = 'AWS';
+    inputs.password = await getECRPassword(inputs.repository);
+  }
+  return inputs;
 }
 
 function defaultRepository(): string {

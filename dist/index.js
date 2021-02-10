@@ -2,6 +2,125 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 5981:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getECRPassword = exports.isECRRepository = void 0;
+const io_1 = __nccwpck_require__(7436);
+const semver = __importStar(__nccwpck_require__(1383));
+const exec_1 = __nccwpck_require__(7757);
+const core_1 = __nccwpck_require__(2186);
+const ecrRepositoryRegex = /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
+function isECRRepository(repository) {
+    return ecrRepositoryRegex.test(repository) || isPubECRRepository(repository);
+}
+exports.isECRRepository = isECRRepository;
+function isPubECRRepository(repository) {
+    return repository.startsWith('public.ecr.aws');
+}
+function getCLI() {
+    return __awaiter(this, void 0, void 0, function* () {
+        return io_1.which('aws', true);
+    });
+}
+function getCLIVersion() {
+    return __awaiter(this, void 0, void 0, function* () {
+        return parseCLIVersion(yield execCLI(['--version']));
+    });
+}
+function parseCLIVersion(stdout) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const matches = /aws-cli\/([0-9.]+)/.exec(stdout);
+        if (matches === null) {
+            throw new Error(`Cannot parse AWS CLI version`);
+        }
+        const version = semver.clean(matches[1]);
+        if (version === null) {
+            throw new Error('Cannot semver parse version');
+        }
+        return version;
+    });
+}
+function execCLI(args) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const cli = yield getCLI();
+        const res = yield exec_1.exec(cli, args, true);
+        if (res.stderr !== '' && !res.success) {
+            throw new Error(res.stderr);
+        }
+        else if (res.stderr !== '') {
+            return res.stderr.trim();
+        }
+        return res.stdout.trim();
+    });
+}
+function getRegion(registry) {
+    if (isPubECRRepository(registry)) {
+        return (process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1');
+    }
+    const matches = registry.match(ecrRepositoryRegex);
+    if (matches === null) {
+        return '';
+    }
+    return matches[3];
+}
+function getDockerLoginPWD(repository, region) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const ecrCmd = isPubECRRepository(repository) ? 'ecr-public' : 'ecr';
+        return execCLI([ecrCmd, 'get-login-password', '--region', region]);
+    });
+}
+function getECRPassword(repository) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const cliPath = yield getCLI();
+        const cliVersion = yield getCLIVersion();
+        const region = getRegion(repository);
+        if (isPubECRRepository(repository)) {
+            core_1.info(`💡 AWS Public ECR detected with ${region} region`);
+        }
+        else {
+            core_1.info(`💡 AWS ECR detected with ${region} region`);
+        }
+        core_1.info(`⬇️ Retrieving docker login password through AWS CLI ${cliVersion} (${cliPath})...`);
+        return getDockerLoginPWD(repository, region);
+    });
+}
+exports.getECRPassword = getECRPassword;
+
+
+/***/ }),
+
 /***/ 9295:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -255,13 +374,12 @@ function shaTag(repository) {
         return `${repository}:${res.stdout.trim()}`;
     });
 }
-function login(repository, username, password) {
+function login(registry, username, password) {
     return __awaiter(this, void 0, void 0, function* () {
         core_1.startGroup('🔑 Logging in');
         if (!username || !password) {
             throw new Error('Username and password required');
         }
-        const registry = getRegistry(repository);
         const args = ['login', '--password-stdin', '--username', username];
         if (registry !== '') {
             args.push(registry);
@@ -375,9 +493,10 @@ exports.getInputs = void 0;
 const sync_1 = __importDefault(__nccwpck_require__(8750));
 const core_1 = __nccwpck_require__(2186);
 const github_1 = __nccwpck_require__(5438);
+const aws_1 = __nccwpck_require__(5981);
 function getInputs() {
     return __awaiter(this, void 0, void 0, function* () {
-        return {
+        const inputs = {
             buildArgs: yield getInputList('build-args'),
             context: core_1.getInput('context'),
             file: core_1.getInput('file'),
@@ -388,6 +507,11 @@ function getInputs() {
             tags: yield getInputList('tags'),
             username: core_1.getInput('username')
         };
+        if (aws_1.isECRRepository(inputs.repository)) {
+            inputs.username = 'AWS';
+            inputs.password = yield aws_1.getECRPassword(inputs.repository);
+        }
+        return inputs;
     });
 }
 exports.getInputs = getInputs;
@@ -472,7 +596,8 @@ function run() {
             }
             state.setIsPost();
             const inputs = yield inputs_1.getInputs();
-            yield docker.login(inputs.repository, inputs.username, inputs.password);
+            const registry = docker.getRegistry(inputs.repository);
+            yield docker.login(registry, inputs.username, inputs.password);
             yield buildx.setup();
             yield docker.build(inputs);
         }
@@ -5333,7 +5458,7 @@ module.exports = bytesToUuid;
 // Unique ID creation requires a high quality random # generator.  In node.js
 // this is pretty straight-forward - we use the crypto API.
 
-var crypto = __nccwpck_require__(6417);
+var crypto = __nccwpck_require__(3373);
 
 module.exports = function nodeRNG() {
   return crypto.randomBytes(16);
@@ -12656,7 +12781,7 @@ module.exports = prerelease
 
 /***/ }),
 
-/***/ 7499:
+/***/ 6417:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 const compare = __nccwpck_require__(4309)
@@ -12739,7 +12864,7 @@ module.exports = {
   patch: __nccwpck_require__(2866),
   prerelease: __nccwpck_require__(6014),
   compare: __nccwpck_require__(4309),
-  rcompare: __nccwpck_require__(7499),
+  rcompare: __nccwpck_require__(6417),
   compareLoose: __nccwpck_require__(2804),
   compareBuild: __nccwpck_require__(2156),
   sort: __nccwpck_require__(1426),
@@ -13881,7 +14006,7 @@ __nccwpck_require__.d(__webpack_exports__, {
 });
 
 // EXTERNAL MODULE: external "crypto"
-var external_crypto_ = __nccwpck_require__(6417);
+var external_crypto_ = __nccwpck_require__(3373);
 var external_crypto_default = /*#__PURE__*/__nccwpck_require__.n(external_crypto_);
 
 // CONCATENATED MODULE: ./node_modules/uuid/dist/esm-node/rng.js
@@ -14738,7 +14863,7 @@ module.exports = require("child_process");;
 
 /***/ }),
 
-/***/ 6417:
+/***/ 3373:
 /***/ ((module) => {
 
 "use strict";
