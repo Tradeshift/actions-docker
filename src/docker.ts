@@ -1,6 +1,7 @@
 import {info, warning, startGroup, endGroup} from '@actions/core';
 import {exec} from './exec';
 import {Inputs} from './inputs';
+import {setRegistry} from './state';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
@@ -83,6 +84,7 @@ export async function login(
   if (res.stderr !== '' && !res.success) {
     throw new Error(res.stderr);
   }
+  setRegistry(registry);
   info('🎉 Login Succeeded!');
 
   endGroup();
