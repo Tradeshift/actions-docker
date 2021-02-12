@@ -316,6 +316,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.logout = exports.login = exports.isDockerhubRepository = exports.getRegistry = exports.build = void 0;
 const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(7757);
+const state_1 = __nccwpck_require__(9249);
 function build(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         core_1.startGroup('🏃 Starting build');
@@ -392,6 +393,7 @@ function login(registry, username, password) {
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
+        state_1.setRegistry(registry);
         core_1.info('🎉 Login Succeeded!');
         core_1.endGroup();
     });
