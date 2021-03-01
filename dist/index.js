@@ -182,10 +182,10 @@ function setup() {
 exports.setup = setup;
 function stop(builderName) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`🧹 Cleaning up builder`);
         if (builderName.length === 0) {
             return;
         }
+        core_1.startGroup(`🧹 Cleaning up builder`);
         const res = yield exec_1.exec('docker', ['buildx', 'rm', builderName], false);
         if (res.stderr !== '' && !res.success) {
             core_1.warning(res.stderr);
@@ -507,7 +507,8 @@ function getInputs() {
             push: /true/i.test(core_1.getInput('push')),
             repository: core_1.getInput('repository') || defaultRepository(),
             tags: yield getInputList('tags'),
-            username: core_1.getInput('username')
+            username: core_1.getInput('username'),
+            authOnly: core_1.getInput('auth-only') === 'true'
         };
         if (aws_1.isECRRepository(inputs.repository)) {
             inputs.username = 'AWS';
@@ -600,6 +601,9 @@ function run() {
             const inputs = yield inputs_1.getInputs();
             const registry = docker.getRegistry(inputs.repository);
             yield docker.login(registry, inputs.username, inputs.password);
+            if (inputs.authOnly) {
+                return;
+            }
             yield buildx.setup();
             yield docker.build(inputs);
         }

@@ -25,11 +25,11 @@ export async function setup(): Promise<void> {
 }
 
 export async function stop(builderName: string): Promise<void> {
-  startGroup(`🧹 Cleaning up builder`);
-
   if (builderName.length === 0) {
     return;
   }
+
+  startGroup(`🧹 Cleaning up builder`);
 
   const res = await exec('docker', ['buildx', 'rm', builderName], false);
   if (res.stderr !== '' && !res.success) {
