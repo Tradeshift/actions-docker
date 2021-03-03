@@ -22,7 +22,7 @@ inputs:
   push:
     required: false
     description: wether to push or not
-    default: "true"
+    default: true
   repository:
     required: false
     description: >
@@ -36,6 +36,12 @@ inputs:
     description: >
       Username for docker registry detected from the repository.
     default: _json_key
+  auth-only:
+    required: true
+    description: >
+      This flag can be used in case only authentication against docker 
+      repo is needed
+    default: false
 runs:
   using: 'node12'
   main: 'dist/index.js'

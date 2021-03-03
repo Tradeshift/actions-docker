@@ -15,6 +15,10 @@ async function run(): Promise<void> {
     const inputs = await getInputs();
     const registry = docker.getRegistry(inputs.repository);
     await docker.login(registry, inputs.username, inputs.password);
+    if (inputs.authOnly) {
+      return;
+    }
+
     await buildx.setup();
     await docker.build(inputs);
   } catch (error) {
