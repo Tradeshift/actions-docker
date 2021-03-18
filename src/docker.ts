@@ -1,7 +1,7 @@
-import {info, warning, startGroup, endGroup} from '@actions/core';
+import {info, debug, warning, startGroup, endGroup} from '@actions/core';
 import {exec} from './exec';
 import {Inputs} from './inputs';
-import {setRegistry} from './state';
+import * as state from './state';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
@@ -65,11 +65,12 @@ export async function login(
   username: string,
   password: string
 ): Promise<void> {
-  startGroup('🔑 Logging in');
-
   if (!username || !password) {
-    throw new Error('Username and password required');
+    debug('Username or password not set. Skipping login.');
+    return;
   }
+
+  startGroup('🔑 Logging in');
 
   const args = ['login', '--password-stdin', '--username', username];
 
@@ -84,7 +85,7 @@ export async function login(
   if (res.stderr !== '' && !res.success) {
     throw new Error(res.stderr);
   }
-  setRegistry(registry);
+  state.setRegistry(registry);
   info('🎉 Login Succeeded!');
 
   endGroup();
