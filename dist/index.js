@@ -166,17 +166,22 @@ const fs = __importStar(__nccwpck_require__(5747));
 const http_client_1 = __nccwpck_require__(9925);
 const uuid = __importStar(__nccwpck_require__(4552));
 const state = __importStar(__nccwpck_require__(9249));
-function setup() {
+const outputs = __importStar(__nccwpck_require__(5314));
+function setup(builderName) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!(yield isAvailable())) {
             yield install();
         }
         const buildxVersion = yield getVersion();
         core_1.info(`📣 Buildx version: ${buildxVersion}`);
-        const builderName = `builder-${uuid.v4()}`;
-        state.setBuilder(builderName);
-        yield createBuilder(builderName);
-        yield bootBuilder(builderName);
+        if (!builderName) {
+            builderName = `builder-${uuid.v4()}`;
+            state.setBuilder(builderName);
+            yield createBuilder(builderName);
+            yield bootBuilder(builderName);
+        }
+        outputs.setBuilder(builderName);
+        yield useBuilder(builderName);
     });
 }
 exports.setup = setup;
@@ -203,8 +208,7 @@ function createBuilder(name) {
             '--name',
             name,
             '--driver',
-            'docker-container',
-            '--use'
+            'docker-container'
         ];
         yield exec_1.exec('docker', args, false);
         core_1.endGroup();
@@ -214,6 +218,14 @@ function bootBuilder(name) {
     return __awaiter(this, void 0, void 0, function* () {
         core_1.startGroup(`🏃 Booting builder`);
         const args = ['buildx', 'inspect', '--bootstrap', '--builder', name];
+        yield exec_1.exec('docker', args, false);
+        core_1.endGroup();
+    });
+}
+function useBuilder(name) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core_1.startGroup(`Using builder`);
+        const args = ['buildx', 'use', name];
         yield exec_1.exec('docker', args, false);
         core_1.endGroup();
     });
@@ -500,6 +512,7 @@ function getInputs() {
     return __awaiter(this, void 0, void 0, function* () {
         const inputs = {
             buildArgs: yield getInputList('build-args'),
+            builder: core_1.getInput('builder'),
             context: core_1.getInput('context'),
             file: core_1.getInput('file'),
             labels: yield getInputList('labels'),
@@ -604,7 +617,7 @@ function run() {
             if (inputs.authOnly) {
                 return;
             }
-            yield buildx.setup();
+            yield buildx.setup(inputs.builder);
             yield docker.build(inputs);
         }
         catch (error) {
@@ -619,6 +632,22 @@ function post() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 5314:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.setBuilder = void 0;
+const core_1 = __nccwpck_require__(2186);
+function setBuilder(name) {
+    core_1.setOutput('builder', name);
+}
+exports.setBuilder = setBuilder;
 
 
 /***/ }),
