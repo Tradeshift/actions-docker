@@ -19,7 +19,7 @@ async function run(): Promise<void> {
       return;
     }
 
-    await buildx.setup();
+    await buildx.setup(inputs.builder);
     await docker.build(inputs);
   } catch (error) {
     setFailed(error.message);

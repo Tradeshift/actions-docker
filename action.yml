@@ -5,6 +5,9 @@ inputs:
   build-args:
     required: false
     description: list of build args
+  builder:
+    required: false
+    description: buildx builder to use
   context:
     required: true
     description: docker context

@@ -5,6 +5,7 @@ import {getECRPassword, isECRRepository} from './aws';
 
 export interface Inputs {
   buildArgs: string[];
+  builder: string;
   context: string;
   file: string;
   labels: string[];
@@ -19,6 +20,7 @@ export interface Inputs {
 export async function getInputs(): Promise<Inputs> {
   const inputs: Inputs = {
     buildArgs: await getInputList('build-args'),
+    builder: getInput('builder'),
     context: getInput('context'),
     file: getInput('file'),
     labels: await getInputList('labels'),

@@ -8,8 +8,9 @@ import * as fs from 'fs';
 import {HttpClient} from '@actions/http-client';
 import * as uuid from 'uuid';
 import * as state from './state';
+import * as outputs from './outputs';
 
-export async function setup(): Promise<void> {
+export async function setup(builderName: string): Promise<void> {
   if (!(await isAvailable())) {
     await install();
   }
@@ -17,11 +18,14 @@ export async function setup(): Promise<void> {
   const buildxVersion = await getVersion();
   info(`📣 Buildx version: ${buildxVersion}`);
 
-  const builderName = `builder-${uuid.v4()}`;
-  state.setBuilder(builderName);
-
-  await createBuilder(builderName);
-  await bootBuilder(builderName);
+  if (!builderName) {
+    builderName = `builder-${uuid.v4()}`;
+    state.setBuilder(builderName);
+    await createBuilder(builderName);
+    await bootBuilder(builderName);
+  }
+  outputs.setBuilder(builderName);
+  await useBuilder(builderName);
 }
 
 export async function stop(builderName: string): Promise<void> {
@@ -48,8 +52,7 @@ async function createBuilder(name: string): Promise<void> {
     '--name',
     name,
     '--driver',
-    'docker-container',
-    '--use'
+    'docker-container'
   ];
   await exec('docker', args, false);
 
@@ -60,6 +63,15 @@ async function bootBuilder(name: string): Promise<void> {
   startGroup(`🏃 Booting builder`);
 
   const args = ['buildx', 'inspect', '--bootstrap', '--builder', name];
+  await exec('docker', args, false);
+
+  endGroup();
+}
+
+async function useBuilder(name: string): Promise<void> {
+  startGroup(`Using builder`);
+
+  const args = ['buildx', 'use', name];
   await exec('docker', args, false);
 
   endGroup();
