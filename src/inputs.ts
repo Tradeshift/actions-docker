@@ -9,6 +9,7 @@ export interface Inputs {
   context: string;
   file: string;
   labels: string[];
+  load: boolean;
   password: string;
   push: boolean;
   repository: string;
@@ -24,6 +25,7 @@ export async function getInputs(): Promise<Inputs> {
     context: getInput('context'),
     file: getInput('file'),
     labels: await getInputList('labels'),
+    load: getInput('load') === 'true',
     password: getInput('password'),
     push: /true/i.test(getInput('push')),
     repository: getInput('repository') || defaultRepository(),
