@@ -45,6 +45,11 @@ inputs:
       This flag can be used in case only authentication against docker 
       repo is needed
     default: false
+outputs:
+  builder:
+    description: buildx builder name
+  image:
+    description: full image name including git SHA tag
 runs:
   using: 'node12'
   main: 'dist/index.js'

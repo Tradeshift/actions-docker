@@ -2,11 +2,14 @@ import {info, debug, warning, startGroup, endGroup} from '@actions/core';
 import {exec} from './exec';
 import {Inputs} from './inputs';
 import * as state from './state';
+import * as outputs from './outputs';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
 
-  const args = await getBuildArgs(inputs);
+  const shaTag = await getSHATag(inputs.repository);
+  outputs.setImage(shaTag);
+  const args = await getBuildArgs(inputs, shaTag);
   const res = await exec('docker', args, false);
   if (res.stderr !== '' && !res.success) {
     throw new Error(`buildx call failed: ${res.stderr.trim()}`);
@@ -15,7 +18,7 @@ export async function build(inputs: Inputs): Promise<void> {
   endGroup();
 }
 
-async function getBuildArgs(inputs: Inputs): Promise<string[]> {
+async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
   const args = ['buildx', 'build'];
   if (inputs.file) {
     args.push('--file', inputs.file);
@@ -26,7 +29,7 @@ async function getBuildArgs(inputs: Inputs): Promise<string[]> {
   await asyncForEach(inputs.tags, async tag => {
     args.push('--tag', tag);
   });
-  args.push('--tag', await shaTag(inputs.repository));
+  args.push('--tag', shaTag);
   if (inputs.push) {
     args.push('--push');
   }
@@ -52,7 +55,7 @@ export function isDockerhubRepository(repository: string): boolean {
   return registry === '';
 }
 
-async function shaTag(repository: string): Promise<string> {
+async function getSHATag(repository: string): Promise<string> {
   const res = await exec('git', ['rev-parse', 'HEAD'], true);
   if (res.stderr !== '' && !res.success) {
     throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
