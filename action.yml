@@ -18,6 +18,9 @@ inputs:
   labels:
     required: false
     description: list of labels
+  load:
+    required: false
+    description: wether to load the image in the docker deamon
   password:
     required: false
     description: >

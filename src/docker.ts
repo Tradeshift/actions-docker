@@ -33,6 +33,9 @@ async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
   if (inputs.push) {
     args.push('--push');
   }
+  if (inputs.load) {
+    args.push('--load');
+  }
   args.push(inputs.context);
   return args;
 }

@@ -379,6 +379,9 @@ function getBuildArgs(inputs, shaTag) {
         if (inputs.push) {
             args.push('--push');
         }
+        if (inputs.load) {
+            args.push('--load');
+        }
         args.push(inputs.context);
         return args;
     });
@@ -539,6 +542,7 @@ function getInputs() {
             context: core_1.getInput('context'),
             file: core_1.getInput('file'),
             labels: yield getInputList('labels'),
+            load: core_1.getInput('load') === 'true',
             password: core_1.getInput('password'),
             push: /true/i.test(core_1.getInput('push')),
             repository: core_1.getInput('repository') || defaultRepository(),
