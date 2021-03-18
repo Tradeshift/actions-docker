@@ -348,10 +348,13 @@ exports.logout = exports.login = exports.isDockerhubRepository = exports.getRegi
 const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(7757);
 const state = __importStar(__nccwpck_require__(9249));
+const outputs = __importStar(__nccwpck_require__(5314));
 function build(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         core_1.startGroup('🏃 Starting build');
-        const args = yield getBuildArgs(inputs);
+        const shaTag = yield getSHATag(inputs.repository);
+        outputs.setImage(shaTag);
+        const args = yield getBuildArgs(inputs, shaTag);
         const res = yield exec_1.exec('docker', args, false);
         if (res.stderr !== '' && !res.success) {
             throw new Error(`buildx call failed: ${res.stderr.trim()}`);
@@ -360,7 +363,7 @@ function build(inputs) {
     });
 }
 exports.build = build;
-function getBuildArgs(inputs) {
+function getBuildArgs(inputs, shaTag) {
     return __awaiter(this, void 0, void 0, function* () {
         const args = ['buildx', 'build'];
         if (inputs.file) {
@@ -372,7 +375,7 @@ function getBuildArgs(inputs) {
         yield asyncForEach(inputs.tags, (tag) => __awaiter(this, void 0, void 0, function* () {
             args.push('--tag', tag);
         }));
-        args.push('--tag', yield shaTag(inputs.repository));
+        args.push('--tag', shaTag);
         if (inputs.push) {
             args.push('--push');
         }
@@ -397,7 +400,7 @@ function isDockerhubRepository(repository) {
     return registry === '';
 }
 exports.isDockerhubRepository = isDockerhubRepository;
-function shaTag(repository) {
+function getSHATag(repository) {
     return __awaiter(this, void 0, void 0, function* () {
         const res = yield exec_1.exec('git', ['rev-parse', 'HEAD'], true);
         if (res.stderr !== '' && !res.success) {
@@ -662,12 +665,16 @@ run();
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setBuilder = void 0;
+exports.setImage = exports.setBuilder = void 0;
 const core_1 = __nccwpck_require__(2186);
 function setBuilder(name) {
     core_1.setOutput('builder', name);
 }
 exports.setBuilder = setBuilder;
+function setImage(name) {
+    core_1.setOutput('image', name);
+}
+exports.setImage = setImage;
 
 
 /***/ }),
