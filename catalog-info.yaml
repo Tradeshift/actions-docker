@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: actions-docker
+  description: |
+    Github action for building docker images
+  annotations:
+    github.com/project-slug: Tradeshift/actions-docker
+  tags:
+    - typescript
+    - github-action
+spec:
+  type: library
+  owner: developer-productivity
+  lifecycle: production
