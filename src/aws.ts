@@ -3,7 +3,8 @@ import * as semver from 'semver';
 import {exec} from './exec';
 import {info} from '@actions/core';
 
-const ecrRepositoryRegex = /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
+const ecrRepositoryRegex =
+  /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
 
 export function isECRRepository(repository: string): boolean {
   return ecrRepositoryRegex.test(repository) || isPubECRRepository(repository);
