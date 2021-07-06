@@ -29,6 +29,14 @@ inputs:
     required: false
     description: wether to push or not
     default: true
+  repo-cache:
+    required: false
+    description: use repo cache (actions/cache) for docker layers
+    default: false
+  repo-cache-key:
+    required: true
+    description: use this to invalidate existing cache
+    default: buildx
   repository:
     required: false
     description: >

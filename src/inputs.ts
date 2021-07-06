@@ -12,6 +12,8 @@ export interface Inputs {
   load: boolean;
   password: string;
   push: boolean;
+  repoCache: boolean;
+  repoCacheKey: string;
   repository: string;
   tags: string[];
   username: string;
@@ -28,6 +30,8 @@ export async function getInputs(): Promise<Inputs> {
     load: getInput('load') === 'true',
     password: getInput('password'),
     push: /true/i.test(getInput('push')),
+    repoCache: getInput('repo-cache') === 'true',
+    repoCacheKey: getInput('repo-cache-key'),
     repository: getInput('repository') || defaultRepository(),
     tags: await getInputList('tags'),
     username: getInput('username'),

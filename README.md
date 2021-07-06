@@ -96,3 +96,29 @@ jobs:
             eu.gcr.io/tradeshift-base/my-repo:master
             eu.gcr.io/tradeshift-base/my-repo:latest
 ```
+
+### Caching
+
+Github repo cache can be enabled for caching docker layers.
+
+```
+jobs: 
+  docker:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: tradeshift/actions-docker@v1
+        with:
+          password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
+          repo-cache: true
+```
+
+We currently dont support docker registry caching but that should be
+implemented in the future.
+
+#### Invalidating cache
+
+If we need to invalidate the cache for some reason, we can set the
+`repo-cache-key` input to something else than `buildx`. This will restore and
+save cache under a new key in the github repo cache, thereby invalidating the
+cache.
