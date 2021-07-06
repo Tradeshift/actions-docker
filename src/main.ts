@@ -3,6 +3,7 @@ import {getInputs} from './inputs';
 import * as docker from './docker';
 import * as state from './state';
 import * as buildx from './buildx';
+import * as cache from './cache';
 
 async function run(): Promise<void> {
   try {
@@ -19,8 +20,10 @@ async function run(): Promise<void> {
       return;
     }
 
+    await cache.restore(inputs);
     await buildx.setup(inputs.builder);
     await docker.build(inputs);
+    await cache.save(inputs);
   } catch (error) {
     setFailed(error.message);
   }

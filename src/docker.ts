@@ -3,6 +3,7 @@ import {exec} from './exec';
 import {Inputs} from './inputs';
 import * as state from './state';
 import * as outputs from './outputs';
+import {buildxCachePath, buildxNewCachePath} from './cache';
 
 export async function build(inputs: Inputs): Promise<void> {
   startGroup('🏃 Starting build');
@@ -35,6 +36,10 @@ async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
   }
   if (inputs.load) {
     args.push('--load');
+  }
+  if (inputs.repoCache) {
+    args.push('--cache-from', `type=local,src=${buildxCachePath}`);
+    args.push('--cache-to', `type=local,src=${buildxNewCachePath}`);
   }
   args.push(inputs.context);
   return args;
