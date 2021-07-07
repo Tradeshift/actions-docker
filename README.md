@@ -101,7 +101,7 @@ jobs:
 
 Github repo cache can be enabled for caching docker layers.
 
-```
+```yaml
 jobs: 
   docker:
     runs-on: self-hosted
