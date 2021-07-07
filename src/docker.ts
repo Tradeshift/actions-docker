@@ -39,7 +39,7 @@ async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
   }
   if (inputs.repoCache) {
     args.push('--cache-from', `type=local,src=${buildxCachePath}`);
-    args.push('--cache-to', `type=local,src=${buildxNewCachePath}`);
+    args.push('--cache-to', `type=local,dest=${buildxNewCachePath}`);
   }
   args.push(inputs.context);
   return args;
