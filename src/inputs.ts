@@ -11,6 +11,7 @@ export interface Inputs {
   labels: string[];
   load: boolean;
   password: string;
+  platform: string;
   push: boolean;
   repoCache: boolean;
   repoCacheKey: string;
@@ -29,6 +30,7 @@ export async function getInputs(): Promise<Inputs> {
     labels: await getInputList('labels'),
     load: getInput('load') === 'true',
     password: getInput('password'),
+    platform: getInput('platform'),
     push: /true/i.test(getInput('push')),
     repoCache: getInput('repo-cache') === 'true',
     repoCacheKey: getInput('repo-cache-key'),

@@ -4,6 +4,7 @@ import * as docker from './docker';
 import * as state from './state';
 import * as buildx from './buildx';
 import * as cache from './cache';
+import * as qemu from './qemu';
 
 async function run(): Promise<void> {
   try {
@@ -21,10 +22,14 @@ async function run(): Promise<void> {
     if (inputs.authOnly) {
       return;
     }
+    await qemu.setup();
 
     await cache.restore(inputs);
     await buildx.setup(inputs.builder);
-    await docker.build(inputs);
+    const shaTag = await docker.build(inputs);
+    if (inputs.push) {
+      await buildx.inspect(shaTag);
+    }
   } catch (error) {
     setFailed(error.message);
   }
