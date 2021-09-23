@@ -20,6 +20,7 @@ export async function build(inputs: Inputs): Promise<void> {
 }
 
 async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
+  info(`Building docker arguments`);
   const args = ['buildx', 'build'];
   if (inputs.file) {
     args.push('--file', inputs.file);
@@ -31,6 +32,9 @@ async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
     args.push('--tag', tag);
   });
   args.push('--tag', shaTag);
+  if (inputs.platform) {
+    args.push('--platform', inputs.platform);
+  }
   if (inputs.push) {
     args.push('--push');
   }
