@@ -116,6 +116,24 @@ jobs:
 We currently dont support docker registry caching but that should be
 implemented in the future.
 
+### Platform
+
+Build docker images against a specific list of platforms (processor architecures)
+
+```yaml
+jobs:
+  docker:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: tradeshift/actions-docker@v1
+        with:
+          password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
+          platform: linux/amd64,linux/arm6
+```
+
+This uses the docker buildx virtualization support to build multi arch docker images
+
 #### Invalidating cache
 
 If we need to invalidate the cache for some reason, we can set the

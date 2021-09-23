@@ -73,6 +73,7 @@ async function useBuilder(name: string): Promise<void> {
 
   const args = ['buildx', 'use', name];
   await exec('docker', args, false);
+  await ls();
 
   endGroup();
 }
@@ -83,6 +84,26 @@ async function getVersion(): Promise<string> {
     throw new Error(res.stderr);
   }
   return parseVersion(res.stdout);
+}
+
+export async function inspect(shatag: string): Promise<void> {
+  startGroup(`📦 Pushed image`);
+  const res = await exec(
+    'docker',
+    ['buildx', 'imagetools', 'inspect', shatag],
+    false
+  );
+  if (res.stderr !== '' && !res.success) {
+    throw new Error(res.stderr);
+  }
+  endGroup();
+}
+
+async function ls(): Promise<void> {
+  const res = await exec('docker', ['buildx', 'ls'], false);
+  if (res.stderr !== '' && !res.success) {
+    throw new Error(res.stderr);
+  }
 }
 
 async function parseVersion(stdout: string): Promise<string> {

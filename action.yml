@@ -29,6 +29,9 @@ inputs:
     required: false
     description: wether to push or not
     default: true
+  platform:
+    required: false
+    description: list of architectures to build against
   repo-cache:
     required: false
     description: use repo cache (actions/cache) for docker layers
