@@ -5,7 +5,7 @@ import * as state from './state';
 import * as outputs from './outputs';
 import {buildxCachePath, buildxNewCachePath} from './cache';
 
-export async function build(inputs: Inputs): Promise<void> {
+export async function build(inputs: Inputs): Promise<string> {
   startGroup('🏃 Starting build');
 
   const shaTag = await getSHATag(inputs.repository);
@@ -15,8 +15,8 @@ export async function build(inputs: Inputs): Promise<void> {
   if (res.stderr !== '' && !res.success) {
     throw new Error(`buildx call failed: ${res.stderr.trim()}`);
   }
-
   endGroup();
+  return shaTag;
 }
 
 async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
@@ -73,6 +73,14 @@ async function getSHATag(repository: string): Promise<string> {
     throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
   }
   return `${repository}:${res.stdout.trim()}`;
+}
+
+export async function version(): Promise<void> {
+  const res = await exec('docker', ['version'], false);
+  if (res.stderr !== '' && !res.success) {
+    warning(res.stderr);
+    return;
+  }
 }
 
 export async function login(
