@@ -154,7 +154,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.stop = exports.setup = void 0;
+exports.inspect = exports.stop = exports.setup = void 0;
 const exec_1 = __nccwpck_require__(7757);
 const core_1 = __nccwpck_require__(2186);
 const tc = __importStar(__nccwpck_require__(7784));
@@ -226,6 +226,7 @@ function useBuilder(name) {
         core_1.startGroup(`Using builder`);
         const args = ['buildx', 'use', name];
         yield exec_1.exec('docker', args, false);
+        yield ls();
         core_1.endGroup();
     });
 }
@@ -236,6 +237,25 @@ function getVersion() {
             throw new Error(res.stderr);
         }
         return parseVersion(res.stdout);
+    });
+}
+function inspect(shatag) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core_1.startGroup(`📦 Pushed image`);
+        const res = yield exec_1.exec('docker', ['buildx', 'imagetools', 'inspect', shatag], false);
+        if (res.stderr !== '' && !res.success) {
+            throw new Error(res.stderr);
+        }
+        core_1.endGroup();
+    });
+}
+exports.inspect = inspect;
+function ls() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const res = yield exec_1.exec('docker', ['buildx', 'ls'], false);
+        if (res.stderr !== '' && !res.success) {
+            throw new Error(res.stderr);
+        }
     });
 }
 function parseVersion(stdout) {
@@ -444,7 +464,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.logout = exports.login = exports.isDockerhubRepository = exports.getRegistry = exports.build = void 0;
+exports.logout = exports.login = exports.version = exports.isDockerhubRepository = exports.getRegistry = exports.build = void 0;
 const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(7757);
 const state = __importStar(__nccwpck_require__(9249));
@@ -461,6 +481,7 @@ function build(inputs) {
             throw new Error(`buildx call failed: ${res.stderr.trim()}`);
         }
         core_1.endGroup();
+        return shaTag;
     });
 }
 exports.build = build;
@@ -477,6 +498,9 @@ function getBuildArgs(inputs, shaTag) {
             args.push('--tag', tag);
         }));
         args.push('--tag', shaTag);
+        if (inputs.platform) {
+            args.push('--platform', inputs.platform);
+        }
         if (inputs.push) {
             args.push('--push');
         }
@@ -517,6 +541,16 @@ function getSHATag(repository) {
         return `${repository}:${res.stdout.trim()}`;
     });
 }
+function version() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const res = yield exec_1.exec('docker', ['version'], false);
+        if (res.stderr !== '' && !res.success) {
+            core_1.warning(res.stderr);
+            return;
+        }
+    });
+}
+exports.version = version;
 function login(registry, username, password) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!username || !password) {
@@ -649,6 +683,7 @@ function getInputs() {
             labels: yield getInputList('labels'),
             load: core_1.getInput('load') === 'true',
             password: core_1.getInput('password'),
+            platform: core_1.getInput('platform'),
             push: /true/i.test(core_1.getInput('push')),
             repoCache: core_1.getInput('repo-cache') === 'true',
             repoCacheKey: core_1.getInput('repo-cache-key'),
@@ -738,6 +773,7 @@ const docker = __importStar(__nccwpck_require__(3758));
 const state = __importStar(__nccwpck_require__(9249));
 const buildx = __importStar(__nccwpck_require__(9295));
 const cache = __importStar(__nccwpck_require__(3782));
+const qemu = __importStar(__nccwpck_require__(7040));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -752,9 +788,13 @@ function run() {
             if (inputs.authOnly) {
                 return;
             }
+            yield qemu.setup();
             yield cache.restore(inputs);
             yield buildx.setup(inputs.builder);
-            yield docker.build(inputs);
+            const shaTag = yield docker.build(inputs);
+            if (inputs.push) {
+                yield buildx.inspect(shaTag);
+            }
         }
         catch (error) {
             core_1.setFailed(error.message);
@@ -789,6 +829,46 @@ function setImage(name) {
     core_1.setOutput('image', name);
 }
 exports.setImage = setImage;
+
+
+/***/ }),
+
+/***/ 7040:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.setup = void 0;
+const exec_1 = __nccwpck_require__(7757);
+const core_1 = __nccwpck_require__(2186);
+function setup() {
+    return __awaiter(this, void 0, void 0, function* () {
+        core_1.startGroup(`🖥️ Setup qemu`);
+        const res = yield exec_1.exec('docker', [
+            'run',
+            '--privileged',
+            '--rm',
+            'eu.gcr.io/tradeshift-base/tonistiigi/binfmt:qemu-v6.1.0',
+            '--install',
+            'all'
+        ], false);
+        if (res.stderr !== '' && !res.success) {
+            core_1.warning(res.stderr);
+        }
+        core_1.endGroup();
+    });
+}
+exports.setup = setup;
 
 
 /***/ }),
@@ -69946,7 +70026,7 @@ module.exports = JSON.parse('["ac","com.ac","edu.ac","gov.ac","net.ac","mil.ac",
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("assert");;
+module.exports = require("assert");
 
 /***/ }),
 
@@ -69954,7 +70034,7 @@ module.exports = require("assert");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("buffer");;
+module.exports = require("buffer");
 
 /***/ }),
 
@@ -69962,7 +70042,7 @@ module.exports = require("buffer");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("child_process");;
+module.exports = require("child_process");
 
 /***/ }),
 
@@ -69970,7 +70050,7 @@ module.exports = require("child_process");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("crypto");;
+module.exports = require("crypto");
 
 /***/ }),
 
@@ -69978,7 +70058,7 @@ module.exports = require("crypto");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("events");;
+module.exports = require("events");
 
 /***/ }),
 
@@ -69986,7 +70066,7 @@ module.exports = require("events");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("fs");;
+module.exports = require("fs");
 
 /***/ }),
 
@@ -69994,7 +70074,7 @@ module.exports = require("fs");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("http");;
+module.exports = require("http");
 
 /***/ }),
 
@@ -70002,7 +70082,7 @@ module.exports = require("http");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("https");;
+module.exports = require("https");
 
 /***/ }),
 
@@ -70010,7 +70090,7 @@ module.exports = require("https");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("net");;
+module.exports = require("net");
 
 /***/ }),
 
@@ -70018,7 +70098,7 @@ module.exports = require("net");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("os");;
+module.exports = require("os");
 
 /***/ }),
 
@@ -70026,7 +70106,7 @@ module.exports = require("os");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("path");;
+module.exports = require("path");
 
 /***/ }),
 
@@ -70034,7 +70114,7 @@ module.exports = require("path");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("punycode");;
+module.exports = require("punycode");
 
 /***/ }),
 
@@ -70042,7 +70122,7 @@ module.exports = require("punycode");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("stream");;
+module.exports = require("stream");
 
 /***/ }),
 
@@ -70050,7 +70130,7 @@ module.exports = require("stream");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("string_decoder");;
+module.exports = require("string_decoder");
 
 /***/ }),
 
@@ -70058,7 +70138,7 @@ module.exports = require("string_decoder");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("timers");;
+module.exports = require("timers");
 
 /***/ }),
 
@@ -70066,7 +70146,7 @@ module.exports = require("timers");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("tls");;
+module.exports = require("tls");
 
 /***/ }),
 
@@ -70074,7 +70154,7 @@ module.exports = require("tls");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("url");;
+module.exports = require("url");
 
 /***/ }),
 
@@ -70082,7 +70162,7 @@ module.exports = require("url");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("util");;
+module.exports = require("util");
 
 /***/ }),
 
@@ -70090,7 +70170,7 @@ module.exports = require("util");;
 /***/ ((module) => {
 
 "use strict";
-module.exports = require("zlib");;
+module.exports = require("zlib");
 
 /***/ })
 
@@ -70129,7 +70209,9 @@ module.exports = require("zlib");;
 /************************************************************************/
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
-/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";/************************************************************************/
+/******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
+/******/ 	
+/************************************************************************/
 /******/ 	
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
