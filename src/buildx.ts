@@ -1,14 +1,16 @@
-import {exec} from './exec';
-import {endGroup, startGroup, info, debug, warning} from '@actions/core';
-import * as tc from '@actions/tool-cache';
-import * as semver from 'semver';
-import * as os from 'os';
-import * as path from 'path';
 import * as fs from 'fs';
-import {HttpClient} from '@actions/http-client';
-import * as uuid from 'uuid';
-import * as state from './state';
+import * as os from 'os';
 import * as outputs from './outputs';
+import * as path from 'path';
+import * as semver from 'semver';
+import * as state from './state';
+import * as tc from '@actions/tool-cache';
+import * as uuid from 'uuid';
+
+import {debug, endGroup, info, startGroup, warning} from '@actions/core';
+import {HttpClient} from '@actions/http-client';
+
+import {exec} from './exec';
 
 export async function setup(builderName: string): Promise<void> {
   if (!(await isAvailable())) {

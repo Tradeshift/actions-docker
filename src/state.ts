@@ -1,4 +1,4 @@
-import {saveState, getState} from '@actions/core';
+import {getState, saveState} from '@actions/core';
 
 export const isPost = getState('isPost') === 'true';
 export const registry = getState('registry');
