@@ -31,7 +31,7 @@ async function run(): Promise<void> {
       await buildx.inspect(shaTag);
     }
   } catch (error) {
-    setFailed(error.message);
+    setFailed((error as Error).message);
   }
 }
 
