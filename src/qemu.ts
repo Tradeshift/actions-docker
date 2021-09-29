@@ -1,5 +1,5 @@
-import {exec} from './exec';
 import {endGroup, startGroup, warning} from '@actions/core';
+import {exec} from './exec';
 
 export async function setup(): Promise<void> {
   startGroup(`🖥️ Setup qemu`);

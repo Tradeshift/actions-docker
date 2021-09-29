@@ -1,10 +1,11 @@
-import {setFailed} from '@actions/core';
-import {getInputs, Inputs} from './inputs';
-import * as docker from './docker';
-import * as state from './state';
 import * as buildx from './buildx';
 import * as cache from './cache';
+import * as docker from './docker';
 import * as qemu from './qemu';
+import * as state from './state';
+
+import {Inputs, getInputs} from './inputs';
+import {setFailed} from '@actions/core';
 
 async function run(): Promise<void> {
   try {

@@ -1,9 +1,9 @@
-import {info, debug, warning, startGroup, endGroup} from '@actions/core';
-import {exec} from './exec';
-import {Inputs} from './inputs';
-import * as state from './state';
 import * as outputs from './outputs';
+import * as state from './state';
 import {buildxCachePath, buildxNewCachePath} from './cache';
+import {debug, endGroup, info, startGroup, warning} from '@actions/core';
+import {Inputs} from './inputs';
+import {exec} from './exec';
 
 export async function build(inputs: Inputs): Promise<string> {
   startGroup('🏃 Starting build');
