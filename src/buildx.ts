@@ -1,14 +1,16 @@
-import {exec} from './exec';
-import {endGroup, startGroup, info, debug, warning} from '@actions/core';
-import * as tc from '@actions/tool-cache';
-import * as semver from 'semver';
-import * as os from 'os';
-import * as path from 'path';
 import * as fs from 'fs';
-import {HttpClient} from '@actions/http-client';
-import * as uuid from 'uuid';
-import * as state from './state';
+import * as os from 'os';
 import * as outputs from './outputs';
+import * as path from 'path';
+import * as semver from 'semver';
+import * as state from './state';
+import * as tc from '@actions/tool-cache';
+import * as uuid from 'uuid';
+
+import {debug, endGroup, info, startGroup, warning} from '@actions/core';
+import {HttpClient} from '@actions/http-client';
+
+import {exec} from './exec';
 
 export async function setup(builderName: string): Promise<void> {
   if (!(await isAvailable())) {
@@ -73,6 +75,7 @@ async function useBuilder(name: string): Promise<void> {
 
   const args = ['buildx', 'use', name];
   await exec('docker', args, false);
+  await ls();
 
   endGroup();
 }
@@ -83,6 +86,26 @@ async function getVersion(): Promise<string> {
     throw new Error(res.stderr);
   }
   return parseVersion(res.stdout);
+}
+
+export async function inspect(shatag: string): Promise<void> {
+  startGroup(`📦 Pushed image`);
+  const res = await exec(
+    'docker',
+    ['buildx', 'imagetools', 'inspect', shatag],
+    false
+  );
+  if (res.stderr !== '' && !res.success) {
+    throw new Error(res.stderr);
+  }
+  endGroup();
+}
+
+async function ls(): Promise<void> {
+  const res = await exec('docker', ['buildx', 'ls'], false);
+  if (res.stderr !== '' && !res.success) {
+    throw new Error(res.stderr);
+  }
 }
 
 async function parseVersion(stdout: string): Promise<string> {

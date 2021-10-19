@@ -1,8 +1,8 @@
-import {saveCache, restoreCache} from '@actions/cache';
-import {endGroup, startGroup, info} from '@actions/core';
-import {rmRF, mv} from '@actions/io';
 import * as git from '@tradeshift/actions-git';
 import * as state from './state';
+import {endGroup, info, startGroup} from '@actions/core';
+import {mv, rmRF} from '@actions/io';
+import {restoreCache, saveCache} from '@actions/cache';
 import {Inputs} from './inputs';
 
 export const buildxCachePath = '/tmp/.buildx-cache';

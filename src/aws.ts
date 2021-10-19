@@ -1,7 +1,8 @@
-import {which} from '@actions/io';
 import * as semver from 'semver';
+
 import {exec} from './exec';
 import {info} from '@actions/core';
+import {which} from '@actions/io';
 
 const ecrRepositoryRegex =
   /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
