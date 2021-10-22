@@ -23,7 +23,7 @@ async function run(): Promise<void> {
     if (inputs.authOnly) {
       return;
     }
-    if (inputs.qemu) {
+    if (inputs.useqemu) {
       await qemu.setup();
     }
 

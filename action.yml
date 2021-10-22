@@ -59,6 +59,11 @@ inputs:
       This flag can be used in case only authentication against docker 
       repo is needed
     default: false
+  useqemu:
+    required: false
+    description: >
+      This flag can be used to enable Qemu, which is used for multi architecture builds like arm
+    default: false
 outputs:
   builder:
     description: buildx builder name
