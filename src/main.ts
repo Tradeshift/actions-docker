@@ -23,7 +23,9 @@ async function run(): Promise<void> {
     if (inputs.authOnly) {
       return;
     }
-    await qemu.setup();
+    if (inputs.qemu) {
+      await qemu.setup();
+    }
 
     await cache.restore(inputs);
     await buildx.setup(inputs.builder);

@@ -19,6 +19,7 @@ export interface Inputs {
   tags: string[];
   username: string;
   authOnly: boolean;
+  qemu: boolean;
 }
 
 export async function getInputs(): Promise<Inputs> {
@@ -37,7 +38,8 @@ export async function getInputs(): Promise<Inputs> {
     repository: getInput('repository') || defaultRepository(),
     tags: await getInputList('tags'),
     username: getInput('username'),
-    authOnly: getInput('auth-only') === 'true'
+    authOnly: getInput('auth-only') === 'true',
+    qemu: getInput('qemu') === 'false'
   };
   if (isECRRepository(inputs.repository)) {
     inputs.username = 'AWS';
