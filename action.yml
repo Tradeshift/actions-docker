@@ -45,6 +45,10 @@ inputs:
     description: >
       The repository where default tags will be pushed. If not specified this
       will default to eu.gcr.io/tradeshift-base/<repo-name>
+  registries:
+    required: false
+    description: >
+      A mulitline string with registries to login to      
   tags:
     required: false
     description: list of tags

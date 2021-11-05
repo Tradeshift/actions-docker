@@ -5,7 +5,7 @@ import * as qemu from './qemu';
 import * as state from './state';
 
 import {Inputs, getInputs} from './inputs';
-import {setFailed} from '@actions/core';
+import {setFailed, info} from '@actions/core';
 
 async function run(): Promise<void> {
   try {
@@ -18,8 +18,17 @@ async function run(): Promise<void> {
 
     state.setIsPost();
 
+    for (const s of inputs.registries) {
+      const res = s.match('(.*):(.*)@(.*)') || [];
+      const username = res[1] || '';
+      const password = res[2] || '';
+      info(`Logging into ${res[3]} with username ${res[1]}`);
+      docker.login(res[3], username, password);
+    }
+
     const registry = docker.getRegistry(inputs.repository);
     await docker.login(registry, inputs.username, inputs.password);
+
     if (inputs.authOnly) {
       return;
     }

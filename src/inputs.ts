@@ -1,7 +1,7 @@
 import {getECRPassword, isECRRepository} from './aws';
 import {context} from '@actions/github';
 import csvparse from 'csv-parse/lib/sync';
-import {getInput} from '@actions/core';
+import {getInput, getMultilineInput} from '@actions/core';
 
 export interface Inputs {
   buildArgs: string[];
@@ -16,6 +16,7 @@ export interface Inputs {
   repoCache: boolean;
   repoCacheKey: string;
   repository: string;
+  registries: string[];
   tags: string[];
   username: string;
   authOnly: boolean;
@@ -36,6 +37,7 @@ export async function getInputs(): Promise<Inputs> {
     repoCache: getInput('repo-cache') === 'true',
     repoCacheKey: getInput('repo-cache-key'),
     repository: getInput('repository') || defaultRepository(),
+    registries: getMultilineInput('registries'),
     tags: await getInputList('tags'),
     username: getInput('username'),
     authOnly: getInput('auth-only') === 'true',
