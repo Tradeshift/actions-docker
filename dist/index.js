@@ -50,7 +50,7 @@ function isPubECRRepository(repository) {
 }
 function getCLI() {
     return __awaiter(this, void 0, void 0, function* () {
-        return io_1.which('aws', true);
+        return (0, io_1.which)('aws', true);
     });
 }
 function getCLIVersion() {
@@ -74,7 +74,7 @@ function parseCLIVersion(stdout) {
 function execCLI(args) {
     return __awaiter(this, void 0, void 0, function* () {
         const cli = yield getCLI();
-        const res = yield exec_1.exec(cli, args, true);
+        const res = yield (0, exec_1.exec)(cli, args, true);
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
@@ -106,12 +106,12 @@ function getECRPassword(repository) {
         const cliVersion = yield getCLIVersion();
         const region = getRegion(repository);
         if (isPubECRRepository(repository)) {
-            core_1.info(`💡 AWS Public ECR detected with ${region} region`);
+            (0, core_1.info)(`💡 AWS Public ECR detected with ${region} region`);
         }
         else {
-            core_1.info(`💡 AWS ECR detected with ${region} region`);
+            (0, core_1.info)(`💡 AWS ECR detected with ${region} region`);
         }
-        core_1.info(`⬇️ Retrieving docker login password through AWS CLI ${cliVersion} (${cliPath})...`);
+        (0, core_1.info)(`⬇️ Retrieving docker login password through AWS CLI ${cliVersion} (${cliPath})...`);
         return getDockerLoginPWD(repository, region);
     });
 }
@@ -172,7 +172,7 @@ function setup(builderName) {
             yield install();
         }
         const buildxVersion = yield getVersion();
-        core_1.info(`📣 Buildx version: ${buildxVersion}`);
+        (0, core_1.info)(`📣 Buildx version: ${buildxVersion}`);
         if (!builderName) {
             builderName = `builder-${uuid.v4()}`;
             state.setBuilder(builderName);
@@ -189,18 +189,18 @@ function stop(builderName) {
         if (builderName.length === 0) {
             return;
         }
-        core_1.startGroup(`🧹 Cleaning up builder`);
-        const res = yield exec_1.exec('docker', ['buildx', 'rm', builderName], false);
+        (0, core_1.startGroup)(`🧹 Cleaning up builder`);
+        const res = yield (0, exec_1.exec)('docker', ['buildx', 'rm', builderName], false);
         if (res.stderr !== '' && !res.success) {
-            core_1.warning(res.stderr);
+            (0, core_1.warning)(res.stderr);
         }
-        core_1.endGroup();
+        (0, core_1.endGroup)();
     });
 }
 exports.stop = stop;
 function createBuilder(name) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`🔨 Creating a new builder instance`);
+        (0, core_1.startGroup)(`🔨 Creating a new builder instance`);
         const args = [
             'buildx',
             'create',
@@ -209,30 +209,30 @@ function createBuilder(name) {
             '--driver',
             'docker-container'
         ];
-        yield exec_1.exec('docker', args, false);
-        core_1.endGroup();
+        yield (0, exec_1.exec)('docker', args, false);
+        (0, core_1.endGroup)();
     });
 }
 function bootBuilder(name) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`🏃 Booting builder`);
+        (0, core_1.startGroup)(`🏃 Booting builder`);
         const args = ['buildx', 'inspect', '--bootstrap', '--builder', name];
-        yield exec_1.exec('docker', args, false);
-        core_1.endGroup();
+        yield (0, exec_1.exec)('docker', args, false);
+        (0, core_1.endGroup)();
     });
 }
 function useBuilder(name) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`Using builder`);
+        (0, core_1.startGroup)(`Using builder`);
         const args = ['buildx', 'use', name];
-        yield exec_1.exec('docker', args, false);
+        yield (0, exec_1.exec)('docker', args, false);
         yield ls();
-        core_1.endGroup();
+        (0, core_1.endGroup)();
     });
 }
 function getVersion() {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('docker', ['buildx', 'version'], true);
+        const res = yield (0, exec_1.exec)('docker', ['buildx', 'version'], true);
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
@@ -241,18 +241,18 @@ function getVersion() {
 }
 function inspect(shatag) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`📦 Pushed image`);
-        const res = yield exec_1.exec('docker', ['buildx', 'imagetools', 'inspect', shatag], false);
+        (0, core_1.startGroup)(`📦 Pushed image`);
+        const res = yield (0, exec_1.exec)('docker', ['buildx', 'imagetools', 'inspect', shatag], false);
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
-        core_1.endGroup();
+        (0, core_1.endGroup)();
     });
 }
 exports.inspect = inspect;
 function ls() {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('docker', ['buildx', 'ls'], false);
+        const res = yield (0, exec_1.exec)('docker', ['buildx', 'ls'], false);
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
@@ -273,13 +273,13 @@ function parseVersion(stdout) {
 }
 function isAvailable() {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('docker', ['buildx'], true);
+        const res = yield (0, exec_1.exec)('docker', ['buildx'], true);
         return res.stderr === '' && res.success;
     });
 }
 function install(inputVersion = 'latest') {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`👉 Installing Buildx`);
+        (0, core_1.startGroup)(`👉 Installing Buildx`);
         const release = yield getRelease(inputVersion);
         if (!release) {
             throw new Error(`Cannot find buildx ${inputVersion} release`);
@@ -296,25 +296,25 @@ function install(inputVersion = 'latest') {
         }
         const dockerConfigHome = process.env.DOCKER_CONFIG || path.join(os.homedir(), '.docker');
         const pluginsDir = path.join(dockerConfigHome, 'cli-plugins');
-        core_1.debug(`Plugins dir is ${pluginsDir}`);
+        (0, core_1.debug)(`Plugins dir is ${pluginsDir}`);
         if (!fs.existsSync(pluginsDir)) {
             fs.mkdirSync(pluginsDir, { recursive: true });
         }
         const binName = os.platform() === 'win32' ? 'docker-buildx.exe' : 'docker-buildx';
         const pluginPath = path.join(pluginsDir, binName);
-        core_1.debug(`Plugin path is ${pluginPath}`);
+        (0, core_1.debug)(`Plugin path is ${pluginPath}`);
         fs.copyFileSync(path.join(toolPath, binName), pluginPath);
-        core_1.info('🔨 Fixing perms...');
+        (0, core_1.info)('🔨 Fixing perms...');
         fs.chmodSync(pluginPath, '0755');
-        core_1.endGroup();
+        (0, core_1.endGroup)();
     });
 }
 function download(version) {
     return __awaiter(this, void 0, void 0, function* () {
         const downloadUrl = `https://github.com/docker/buildx/releases/download/v${version}/buildx-v${version}.linux-amd64`;
-        core_1.info(`⬇️ Downloading ${downloadUrl}...`);
+        (0, core_1.info)(`⬇️ Downloading ${downloadUrl}...`);
         const downloadPath = yield tc.downloadTool(downloadUrl);
-        core_1.debug(`Downloaded to ${downloadPath}`);
+        (0, core_1.debug)(`Downloaded to ${downloadPath}`);
         return tc.cacheFile(downloadPath, 'docker-buildx', 'buildx', version);
     });
 }
@@ -374,21 +374,21 @@ exports.buildxNewCachePath = '/tmp/.buildx-cache-new';
 function restore(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         if (inputs.repoCache) {
-            core_1.startGroup('🚚 Restoring cache from Github repo cache...');
+            (0, core_1.startGroup)('🚚 Restoring cache from Github repo cache...');
             const primaryKey = yield getRepoCacheKey(inputs);
             state.setCacheKey(primaryKey);
             const restoreKeys = getRepoCacheRestoreKeys(inputs);
-            const cacheKey = yield cache_1.restoreCache([exports.buildxCachePath], primaryKey, restoreKeys);
+            const cacheKey = yield (0, cache_1.restoreCache)([exports.buildxCachePath], primaryKey, restoreKeys);
             if (!cacheKey) {
-                core_1.info(`Cache not found for input keys: ${[primaryKey, ...restoreKeys].join(', ')}`);
-                core_1.endGroup();
+                (0, core_1.info)(`Cache not found for input keys: ${[primaryKey, ...restoreKeys].join(', ')}`);
+                (0, core_1.endGroup)();
                 return;
             }
             if (isExactKeyMatch(primaryKey, cacheKey)) {
                 state.setCacheKeyExactMatch();
             }
-            core_1.info(`Cache restored from key: ${cacheKey}`);
-            core_1.endGroup();
+            (0, core_1.info)(`Cache restored from key: ${cacheKey}`);
+            (0, core_1.endGroup)();
         }
     });
 }
@@ -402,18 +402,18 @@ function isExactKeyMatch(key, cacheKey) {
 function save(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         if (inputs.repoCache) {
-            core_1.startGroup('🚚 Saving cache in Github repo cache...');
+            (0, core_1.startGroup)('🚚 Saving cache in Github repo cache...');
             const primaryKey = state.cacheKey;
             if (state.isCacheKeyExactMatch) {
-                core_1.info(`Cache hit occurred on the primary key ${primaryKey}, not saving cache.`);
-                core_1.endGroup();
+                (0, core_1.info)(`Cache hit occurred on the primary key ${primaryKey}, not saving cache.`);
+                (0, core_1.endGroup)();
                 return;
             }
-            yield io_1.rmRF(exports.buildxCachePath);
-            yield io_1.mv(exports.buildxNewCachePath, exports.buildxCachePath);
-            yield cache_1.saveCache([exports.buildxCachePath], primaryKey);
-            core_1.info(`Saved cache with key: ${primaryKey}`);
-            core_1.endGroup();
+            yield (0, io_1.rmRF)(exports.buildxCachePath);
+            yield (0, io_1.mv)(exports.buildxNewCachePath, exports.buildxCachePath);
+            yield (0, cache_1.saveCache)([exports.buildxCachePath], primaryKey);
+            (0, core_1.info)(`Saved cache with key: ${primaryKey}`);
+            (0, core_1.endGroup)();
         }
     });
 }
@@ -472,15 +472,15 @@ const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(7757);
 function build(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup('🏃 Starting build');
+        (0, core_1.startGroup)('🏃 Starting build');
         const shaTag = yield getSHATag(inputs.repository);
         outputs.setImage(shaTag);
         const args = yield getBuildArgs(inputs, shaTag);
-        const res = yield exec_1.exec('docker', args, false);
+        const res = yield (0, exec_1.exec)('docker', args, false);
         if (res.stderr !== '' && !res.success) {
             throw new Error(`buildx call failed: ${res.stderr.trim()}`);
         }
-        core_1.endGroup();
+        (0, core_1.endGroup)();
         return shaTag;
     });
 }
@@ -534,7 +534,7 @@ function isDockerhubRepository(repository) {
 exports.isDockerhubRepository = isDockerhubRepository;
 function getSHATag(repository) {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('git', ['rev-parse', 'HEAD'], true);
+        const res = yield (0, exec_1.exec)('git', ['rev-parse', 'HEAD'], true);
         if (res.stderr !== '' && !res.success) {
             throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
         }
@@ -543,9 +543,9 @@ function getSHATag(repository) {
 }
 function version() {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('docker', ['version'], false);
+        const res = yield (0, exec_1.exec)('docker', ['version'], false);
         if (res.stderr !== '' && !res.success) {
-            core_1.warning(res.stderr);
+            (0, core_1.warning)(res.stderr);
             return;
         }
     });
@@ -554,25 +554,25 @@ exports.version = version;
 function login(registry, username, password) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!username || !password) {
-            core_1.debug('Username or password not set. Skipping login.');
+            (0, core_1.debug)('Username or password not set. Skipping login.');
             return;
         }
-        core_1.startGroup('🔑 Logging in');
+        (0, core_1.startGroup)('🔑 Logging in');
         const args = ['login', '--password-stdin', '--username', username];
         if (registry !== '') {
             args.push(registry);
-            core_1.info(`🔑 Logging into ${registry}...`);
+            (0, core_1.info)(`🔑 Logging into ${registry}...`);
         }
         else {
-            core_1.info(`🔑 Logging into Docker Hub...`);
+            (0, core_1.info)(`🔑 Logging into Docker Hub...`);
         }
-        const res = yield exec_1.exec('docker', args, false, password);
+        const res = yield (0, exec_1.exec)('docker', args, false, password);
         if (res.stderr !== '' && !res.success) {
             throw new Error(res.stderr);
         }
         state.setRegistry(registry);
-        core_1.info('🎉 Login Succeeded!');
-        core_1.endGroup();
+        (0, core_1.info)('🎉 Login Succeeded!');
+        (0, core_1.endGroup)();
     });
 }
 exports.login = login;
@@ -585,12 +585,12 @@ function asyncForEach(array, callback) {
 }
 function logout(registry) {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield exec_1.exec('docker', ['logout', registry], false);
+        const res = yield (0, exec_1.exec)('docker', ['logout', registry], false);
         if (res.stderr !== '' && !res.success) {
-            core_1.warning(res.stderr);
+            (0, core_1.warning)(res.stderr);
             return;
         }
-        core_1.info('👋 Logged out.');
+        (0, core_1.info)('👋 Logged out.');
     });
 }
 exports.logout = logout;
@@ -620,9 +620,9 @@ function exec(command, args = [], silent, stdin) {
     return __awaiter(this, void 0, void 0, function* () {
         let stdout = '';
         let stderr = '';
-        core_1.debug(`Executing: ${command} ${args.join(' ')}`);
+        (0, core_1.debug)(`Executing: ${command} ${args.join(' ')}`);
         if (stdin) {
-            core_1.debug(`Stdin: ${stdin}`);
+            (0, core_1.debug)(`Stdin: ${stdin}`);
         }
         const options = {
             silent,
@@ -637,7 +637,7 @@ function exec(command, args = [], silent, stdin) {
                 stderr += data.toString();
             }
         };
-        const returnCode = yield exec_1.exec(command, args, options);
+        const returnCode = yield (0, exec_1.exec)(command, args, options);
         return {
             success: returnCode === 0,
             stdout: stdout.trim(),
@@ -677,25 +677,26 @@ function getInputs() {
     return __awaiter(this, void 0, void 0, function* () {
         const inputs = {
             buildArgs: yield getInputList('build-args'),
-            builder: core_1.getInput('builder'),
-            context: core_1.getInput('context'),
-            file: core_1.getInput('file'),
+            builder: (0, core_1.getInput)('builder'),
+            context: (0, core_1.getInput)('context'),
+            file: (0, core_1.getInput)('file'),
             labels: yield getInputList('labels'),
-            load: core_1.getInput('load') === 'true',
-            password: core_1.getInput('password'),
-            platform: core_1.getInput('platform'),
-            push: /true/i.test(core_1.getInput('push')),
-            repoCache: core_1.getInput('repo-cache') === 'true',
-            repoCacheKey: core_1.getInput('repo-cache-key'),
-            repository: core_1.getInput('repository') || defaultRepository(),
+            load: (0, core_1.getInput)('load') === 'true',
+            password: (0, core_1.getInput)('password'),
+            platform: (0, core_1.getInput)('platform'),
+            push: /true/i.test((0, core_1.getInput)('push')),
+            repoCache: (0, core_1.getInput)('repo-cache') === 'true',
+            repoCacheKey: (0, core_1.getInput)('repo-cache-key'),
+            repository: (0, core_1.getInput)('repository') || defaultRepository(),
+            registries: (0, core_1.getMultilineInput)('registries'),
             tags: yield getInputList('tags'),
-            username: core_1.getInput('username'),
-            authOnly: core_1.getInput('auth-only') === 'true',
-            useqemu: core_1.getInput('useqemu') === 'false'
+            username: (0, core_1.getInput)('username'),
+            authOnly: (0, core_1.getInput)('auth-only') === 'true',
+            useqemu: (0, core_1.getInput)('useqemu') === 'true'
         };
-        if (aws_1.isECRRepository(inputs.repository)) {
+        if ((0, aws_1.isECRRepository)(inputs.repository)) {
             inputs.username = 'AWS';
-            inputs.password = yield aws_1.getECRPassword(inputs.repository);
+            inputs.password = yield (0, aws_1.getECRPassword)(inputs.repository);
         }
         return inputs;
     });
@@ -707,11 +708,11 @@ function defaultRepository() {
 function getInputList(name, ignoreComma = false) {
     return __awaiter(this, void 0, void 0, function* () {
         const res = [];
-        const items = core_1.getInput(name);
+        const items = (0, core_1.getInput)(name);
         if (items === '') {
             return res;
         }
-        const parsed = yield sync_1.default(items, {
+        const parsed = yield (0, sync_1.default)(items, {
             columns: false,
             relaxColumnCount: true,
             skipLinesWithEmptyValues: true
@@ -778,18 +779,25 @@ const core_1 = __nccwpck_require__(2186);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const inputs = yield inputs_1.getInputs();
+            const inputs = yield (0, inputs_1.getInputs)();
             if (state.isPost) {
                 yield post(inputs);
                 return;
             }
             state.setIsPost();
+            for (const s of inputs.registries) {
+                const res = s.match('(.*):(.*)@(.*)') || [];
+                const username = res[1] || '';
+                const password = res[2] || '';
+                (0, core_1.info)(`Logging into ${res[3]} with username ${res[1]}`);
+                docker.login(res[3], username, password);
+            }
             const registry = docker.getRegistry(inputs.repository);
             yield docker.login(registry, inputs.username, inputs.password);
             if (inputs.authOnly) {
                 return;
             }
-            if (inputs.qemu) {
+            if (inputs.useqemu) {
                 yield qemu.setup();
             }
             yield cache.restore(inputs);
@@ -800,7 +808,7 @@ function run() {
             }
         }
         catch (error) {
-            core_1.setFailed(error.message);
+            (0, core_1.setFailed)(error.message);
         }
     });
 }
@@ -825,11 +833,11 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setImage = exports.setBuilder = void 0;
 const core_1 = __nccwpck_require__(2186);
 function setBuilder(name) {
-    core_1.setOutput('builder', name);
+    (0, core_1.setOutput)('builder', name);
 }
 exports.setBuilder = setBuilder;
 function setImage(name) {
-    core_1.setOutput('image', name);
+    (0, core_1.setOutput)('image', name);
 }
 exports.setImage = setImage;
 
@@ -856,8 +864,8 @@ const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(7757);
 function setup() {
     return __awaiter(this, void 0, void 0, function* () {
-        core_1.startGroup(`🖥️ Setup qemu`);
-        const res = yield exec_1.exec('docker', [
+        (0, core_1.startGroup)(`🖥️ Setup qemu`);
+        const res = yield (0, exec_1.exec)('docker', [
             'run',
             '--privileged',
             '--rm',
@@ -866,9 +874,9 @@ function setup() {
             'all'
         ], false);
         if (res.stderr !== '' && !res.success) {
-            core_1.warning(res.stderr);
+            (0, core_1.warning)(res.stderr);
         }
-        core_1.endGroup();
+        (0, core_1.endGroup)();
     });
 }
 exports.setup = setup;
@@ -884,29 +892,29 @@ exports.setup = setup;
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setCacheKeyExactMatch = exports.setCacheKey = exports.setBuilder = exports.setIsPost = exports.setRegistry = exports.isCacheKeyExactMatch = exports.cacheKey = exports.builderName = exports.registry = exports.isPost = void 0;
 const core_1 = __nccwpck_require__(2186);
-exports.isPost = core_1.getState('isPost') === 'true';
-exports.registry = core_1.getState('registry');
-exports.builderName = core_1.getState('builderName');
-exports.cacheKey = core_1.getState('cacheKey');
-exports.isCacheKeyExactMatch = core_1.getState('cacheKeyExactMatch') === 'true';
+exports.isPost = (0, core_1.getState)('isPost') === 'true';
+exports.registry = (0, core_1.getState)('registry');
+exports.builderName = (0, core_1.getState)('builderName');
+exports.cacheKey = (0, core_1.getState)('cacheKey');
+exports.isCacheKeyExactMatch = (0, core_1.getState)('cacheKeyExactMatch') === 'true';
 function setRegistry(s) {
-    core_1.saveState('registry', s);
+    (0, core_1.saveState)('registry', s);
 }
 exports.setRegistry = setRegistry;
 function setIsPost() {
-    core_1.saveState('isPost', 'true');
+    (0, core_1.saveState)('isPost', 'true');
 }
 exports.setIsPost = setIsPost;
 function setBuilder(s) {
-    core_1.saveState('builderName', s);
+    (0, core_1.saveState)('builderName', s);
 }
 exports.setBuilder = setBuilder;
 function setCacheKey(s) {
-    core_1.saveState('cacheKey', s);
+    (0, core_1.saveState)('cacheKey', s);
 }
 exports.setCacheKey = setCacheKey;
 function setCacheKeyExactMatch() {
-    core_1.saveState('cacheKeyExactMatch', 'true');
+    (0, core_1.saveState)('cacheKeyExactMatch', 'true');
 }
 exports.setCacheKeyExactMatch = setCacheKeyExactMatch;
 
