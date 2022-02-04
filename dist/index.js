@@ -51007,7 +51007,7 @@ exports.headSHA = void 0;
 const actions_exec_1 = __nccwpck_require__(291);
 function headSHA() {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield actions_exec_1.exec('git', ['rev-parse', 'HEAD'], true);
+        const res = yield (0, actions_exec_1.exec)('git', ['rev-parse', 'HEAD'], true);
         if (res.stderr !== '' && !res.success) {
             throw new Error(`could not get git head sha: ${res.stderr}`);
         }
