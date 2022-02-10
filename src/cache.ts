@@ -1,4 +1,4 @@
-import * as git from '@tradeshift/actions-git';
+import * as git from './git';
 import * as state from './state';
 import {endGroup, info, startGroup} from '@actions/core';
 import {mv, rmRF} from '@actions/io';
