@@ -74,6 +74,6 @@ outputs:
   image:
     description: full image name including git SHA tag
 runs:
-  using: 'node12'
+  using: 'node16'
   main: 'dist/index.js'
   post: 'dist/index.js'
