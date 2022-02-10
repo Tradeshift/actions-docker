@@ -1,5 +1,7 @@
 # actions-docker
 
+[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
+
 This is an action for building and pushing docker images. A rough overview of
 the process:
 
@@ -17,7 +19,7 @@ The most common usecase is to build a single dockerfile in the root of the
 repo. All that you need to do in that case is this.
 
 ```yaml
-jobs: 
+jobs:
   docker:
     runs-on: self-hosted
     steps:
@@ -38,7 +40,7 @@ In the following example we are building two images from `Dockerfile.a` and
 `Dockerfile.b` both of which are residing in the root of the repo.
 
 ```yaml
-jobs: 
+jobs:
   docker:
     runs-on: self-hosted
     steps:
@@ -60,7 +62,7 @@ image dockerfiles are in the root of their respective folders. In the following
 example the folders are called `image-a` and `image-b`
 
 ```yaml
-jobs: 
+jobs:
   docker:
     runs-on: self-hosted
     steps:
@@ -84,7 +86,7 @@ additional tags. Maybe you want a tag `master` for the most recent build of the
 master branch. In the following example we add the master and latests tags.
 
 ```yaml
-jobs: 
+jobs:
   docker:
     runs-on: self-hosted
     steps:
@@ -102,7 +104,7 @@ jobs:
 Github repo cache can be enabled for caching docker layers.
 
 ```yaml
-jobs: 
+jobs:
   docker:
     runs-on: self-hosted
     steps:
