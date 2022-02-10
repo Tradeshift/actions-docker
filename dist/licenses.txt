@@ -709,12 +709,6 @@ Apache-2.0
    limitations under the License.
 
 
-@tradeshift/actions-exec
-MIT
-
-@tradeshift/actions-git
-MIT
-
 @vercel/ncc
 MIT
 Copyright 2018 ZEIT, Inc.
