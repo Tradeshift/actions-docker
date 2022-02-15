@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
+  "name": "@tradeshift/actions-docker",
   "version": "0.0.0",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "Github actions for working w/ docker images",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -15,12 +15,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/tradeshift/actions-docker.git"
   },
   "keywords": [
     "actions",
-    "node",
-    "setup"
+    "docker"
   ],
   "author": "",
   "license": "MIT",
