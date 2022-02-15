@@ -9,7 +9,7 @@ inputs:
     required: false
     description: buildx builder to use
   context:
-    required: true
+    required: false
     description: docker context
     default: .
   file:
@@ -37,7 +37,7 @@ inputs:
     description: use repo cache (actions/cache) for docker layers
     default: false
   repo-cache-key:
-    required: true
+    required: false
     description: use this to invalidate existing cache
     default: buildx
   repository:
@@ -58,7 +58,7 @@ inputs:
       Username for docker registry detected from the repository.
     default: _json_key
   auth-only:
-    required: true
+    required: false
     description: >
       This flag can be used in case only authentication against docker 
       repo is needed
