@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.head_ref }}
       - uses: actions/cache@v2
         with:
           path: ~/.npm
@@ -21,5 +21,33 @@ jobs:
           npm run lint
           npm run package
           npm run test
-      - name: Check for changes (fail if we forgot to update dist)
+
+      - name: Check for changes
+        id: diff
+        continue-on-error: true
         run: git diff --quiet dist
+      - name: Set up commit signing w/ GPG
+        if: ${{ steps.diff.outcome != 'success' }}
+        run: |
+          KEYDIR=$(mktemp -d)
+          KEYFILE="${KEYDIR}/key.asc"
+          echo "$GPG_KEY" > "${KEYFILE}"
+          GPG_SHORTID=$(gpg --show-keys --keyid-format=long "${KEYFILE}" | grep sec | cut -d/ -f2 | cut -d' ' -f1)
+          gpg --import --batch --yes "${KEYFILE}"
+          git config --global commit.gpgsign true
+          git config --global user.signingkey "${GPG_SHORTID}"
+          # Get the email and username of the key:
+          GPG_USER=$(gpg --fingerprint "${GPG_SHORTID}" | sed -n '/^uid/s/.*\]\s//p')
+          _GPG_EMAIL=${GPG_USER#*\<}
+          GPG_EMAIL=${_GPG_EMAIL%>}
+          git config --global user.email ${GPG_EMAIL}
+          git config --global user.name ${GPG_USER%<*}
+        env:
+          GPG_KEY: ${{ secrets.TRADESHIFTCI_GPG_KEY }}
+      - name: Push changes
+        if: ${{ steps.diff.outcome != 'success' }}
+        run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}
+          git add dist
+          git commit -m 'build: auto-update dist'
+          git push
