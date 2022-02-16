@@ -1,1 +1,9 @@
-{"description": "Docker Github Action", "maintainers": ["Developer productivity"]}
+{
+    "description": "Docker Github Action",
+    "maintainers": [
+        "Developer productivity"
+    ],
+    "topics": [
+        "github-actions"
+    ]
+}
