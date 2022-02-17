@@ -8,9 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     outputs:
-      needs-update:
-        description: Flag if diff is out of date
-        value: ${{ steps.diff.output != 'success' }}
+      needs-update: ${{ steps.diff.output != 'success' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
@@ -33,6 +31,7 @@ jobs:
 
       - name: Set up commit signing w/ GPG
         if: ${{ steps.diff.outcome != 'success' }}
+        id: configure
         run: |
           KEYDIR=$(mktemp -d)
           KEYFILE="${KEYDIR}/key.asc"
