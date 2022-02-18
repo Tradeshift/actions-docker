@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-20.04
     outputs:
-      needs-update: ${{ steps.diff.output != 'success' }}
+      needs-update: ${{ steps.diff.outcome != 'success' }}
     steps:
       - uses: actions/checkout@v2
       - uses: actions/cache@v2
