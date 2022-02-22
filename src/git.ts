@@ -1,7 +1,7 @@
-import exec from '@actions/exec';
+import {getExecOutput} from '@actions/exec';
 
 export async function headSHA(): Promise<string> {
-  const res = await exec.getExecOutput('git', ['rev-parse', 'HEAD'], {
+  const res = await getExecOutput('git', ['rev-parse', 'HEAD'], {
     silent: true
   });
   if (res.exitCode !== 0 || res.stderr !== '') {
