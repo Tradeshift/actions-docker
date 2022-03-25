@@ -1,9 +1,9 @@
+import * as exec from '@actions/exec';
 import * as outputs from './outputs';
 import * as state from './state';
 import {buildxCachePath, buildxNewCachePath} from './cache';
 import {debug, endGroup, info, startGroup, warning} from '@actions/core';
 import {Inputs} from './inputs';
-import {exec} from './exec';
 
 export async function build(inputs: Inputs): Promise<string> {
   startGroup('🏃 Starting build');
@@ -11,8 +11,8 @@ export async function build(inputs: Inputs): Promise<string> {
   const shaTag = await getSHATag(inputs.repository);
   outputs.setImage(shaTag);
   const args = await getBuildArgs(inputs, shaTag);
-  const res = await exec('docker', args, false);
-  if (res.stderr !== '' && !res.success) {
+  const res = await exec.getExecOutput('docker', args);
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(`buildx call failed: ${res.stderr.trim()}`);
   }
   endGroup();
@@ -67,16 +67,18 @@ export function isDockerhubRepository(repository: string): boolean {
 }
 
 async function getSHATag(repository: string): Promise<string> {
-  const res = await exec('git', ['rev-parse', 'HEAD'], true);
-  if (res.stderr !== '' && !res.success) {
+  const res = await exec.getExecOutput('git', ['rev-parse', 'HEAD'], {
+    silent: true
+  });
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
   }
   return `${repository}:${res.stdout.trim()}`;
 }
 
 export async function version(): Promise<void> {
-  const res = await exec('docker', ['version'], false);
-  if (res.stderr !== '' && !res.success) {
+  const res = await exec.getExecOutput('docker', ['version']);
+  if (res.stderr !== '' && res.exitCode) {
     warning(res.stderr);
     return;
   }
@@ -103,8 +105,10 @@ export async function login(
     info(`🔑 Logging into Docker Hub...`);
   }
 
-  const res = await exec('docker', args, false, password);
-  if (res.stderr !== '' && !res.success) {
+  const res = await exec.getExecOutput('docker', args, {
+    input: Buffer.from(password, 'utf-8')
+  });
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   }
   state.setRegistry(registry);
@@ -123,8 +127,8 @@ async function asyncForEach<T>(
 }
 
 export async function logout(registry: string): Promise<void> {
-  const res = await exec('docker', ['logout', registry], false);
-  if (res.stderr !== '' && !res.success) {
+  const res = await exec.getExecOutput('docker', ['logout', registry]);
+  if (res.stderr !== '' && res.exitCode) {
     warning(res.stderr);
     return;
   }

@@ -1,8 +1,8 @@
 import * as semver from 'semver';
 
-import {exec} from './exec';
 import {info} from '@actions/core';
 import {which} from '@actions/io';
+import {getExecOutput} from '@actions/exec';
 
 const ecrRepositoryRegex =
   /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
@@ -37,8 +37,8 @@ async function parseCLIVersion(stdout: string): Promise<string> {
 
 async function execCLI(args: string[]): Promise<string> {
   const cli = await getCLI();
-  const res = await exec(cli, args, true);
-  if (res.stderr !== '' && !res.success) {
+  const res = await getExecOutput(cli, args, {silent: true});
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   } else if (res.stderr !== '') {
     return res.stderr.trim();

@@ -9,8 +9,7 @@ import * as uuid from 'uuid';
 
 import {debug, endGroup, info, startGroup, warning} from '@actions/core';
 import {HttpClient} from '@actions/http-client';
-
-import {exec} from './exec';
+import {exec, getExecOutput} from '@actions/exec';
 
 export async function setup(builderName: string): Promise<void> {
   if (!(await isAvailable())) {
@@ -37,8 +36,8 @@ export async function stop(builderName: string): Promise<void> {
 
   startGroup(`🧹 Cleaning up builder`);
 
-  const res = await exec('docker', ['buildx', 'rm', builderName], false);
-  if (res.stderr !== '' && !res.success) {
+  const res = await getExecOutput('docker', ['buildx', 'rm', builderName]);
+  if (res.stderr !== '' && res.exitCode) {
     warning(res.stderr);
   }
 
@@ -56,7 +55,7 @@ async function createBuilder(name: string): Promise<void> {
     '--driver',
     'docker-container'
   ];
-  await exec('docker', args, false);
+  await exec('docker', args);
 
   endGroup();
 }
@@ -65,7 +64,7 @@ async function bootBuilder(name: string): Promise<void> {
   startGroup(`🏃 Booting builder`);
 
   const args = ['buildx', 'inspect', '--bootstrap', '--builder', name];
-  await exec('docker', args, false);
+  await exec('docker', args);
 
   endGroup();
 }
@@ -74,15 +73,17 @@ async function useBuilder(name: string): Promise<void> {
   startGroup(`Using builder`);
 
   const args = ['buildx', 'use', name];
-  await exec('docker', args, false);
+  await exec('docker', args);
   await ls();
 
   endGroup();
 }
 
 async function getVersion(): Promise<string> {
-  const res = await exec('docker', ['buildx', 'version'], true);
-  if (res.stderr !== '' && !res.success) {
+  const res = await getExecOutput('docker', ['buildx', 'version'], {
+    silent: true
+  });
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   }
   return parseVersion(res.stdout);
@@ -90,20 +91,21 @@ async function getVersion(): Promise<string> {
 
 export async function inspect(shatag: string): Promise<void> {
   startGroup(`📦 Pushed image`);
-  const res = await exec(
-    'docker',
-    ['buildx', 'imagetools', 'inspect', shatag],
-    false
-  );
-  if (res.stderr !== '' && !res.success) {
+  const res = await getExecOutput('docker', [
+    'buildx',
+    'imagetools',
+    'inspect',
+    shatag
+  ]);
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   }
   endGroup();
 }
 
 async function ls(): Promise<void> {
-  const res = await exec('docker', ['buildx', 'ls'], false);
-  if (res.stderr !== '' && !res.success) {
+  const res = await getExecOutput('docker', ['buildx', 'ls']);
+  if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   }
 }
@@ -121,8 +123,8 @@ async function parseVersion(stdout: string): Promise<string> {
 }
 
 async function isAvailable(): Promise<boolean> {
-  const res = await exec('docker', ['buildx'], true);
-  return res.stderr === '' && res.success;
+  const res = await getExecOutput('docker', ['buildx']);
+  return res.stderr === '' && !res.exitCode;
 }
 
 async function install(inputVersion = 'latest'): Promise<void> {
