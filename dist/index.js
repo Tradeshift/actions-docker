@@ -1074,6 +1074,9 @@ function saveCache(paths, key, options) {
         const cachePaths = yield utils.resolvePaths(paths);
         core.debug('Cache Paths:');
         core.debug(`${JSON.stringify(cachePaths)}`);
+        if (cachePaths.length === 0) {
+            throw new Error(`Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.`);
+        }
         const archiveFolder = yield utils.createTempDirectory();
         const archivePath = path.join(archiveFolder, utils.getCacheFileName(compressionMethod));
         core.debug(`Archive Path: ${archivePath}`);
@@ -1146,8 +1149,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const http_client_1 = __nccwpck_require__(9925);
-const auth_1 = __nccwpck_require__(3702);
+const http_client_1 = __nccwpck_require__(1825);
+const auth_1 = __nccwpck_require__(2001);
 const crypto = __importStar(__nccwpck_require__(3373));
 const fs = __importStar(__nccwpck_require__(5747));
 const url_1 = __nccwpck_require__(8835);
@@ -1579,7 +1582,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const http_client_1 = __nccwpck_require__(9925);
+const http_client_1 = __nccwpck_require__(1825);
 const storage_blob_1 = __nccwpck_require__(4100);
 const buffer = __importStar(__nccwpck_require__(4293));
 const fs = __importStar(__nccwpck_require__(5747));
@@ -1817,7 +1820,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const http_client_1 = __nccwpck_require__(9925);
+const http_client_1 = __nccwpck_require__(1825);
 const constants_1 = __nccwpck_require__(8840);
 function isSuccessStatusCode(statusCode) {
     if (!statusCode) {
@@ -1894,7 +1897,7 @@ function retryTypedResponse(name, method, maxAttempts = constants_1.DefaultRetry
     return __awaiter(this, void 0, void 0, function* () {
         return yield retry(name, method, (response) => response.statusCode, maxAttempts, delay, 
         // If the error object contains the statusCode property, extract it and return
-        // an ITypedResponse<T> so it can be processed by the retry logic.
+        // an TypedResponse<T> so it can be processed by the retry logic.
         (error) => {
             if (error instanceof http_client_1.HttpClientError) {
                 return {
@@ -2158,6 +2161,774 @@ function getDownloadOptions(copy) {
 }
 exports.getDownloadOptions = getDownloadOptions;
 //# sourceMappingURL=options.js.map
+
+/***/ }),
+
+/***/ 2001:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PersonalAccessTokenCredentialHandler = exports.BearerCredentialHandler = exports.BasicCredentialHandler = void 0;
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.BasicCredentialHandler = BasicCredentialHandler;
+class BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.BearerCredentialHandler = BearerCredentialHandler;
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
+//# sourceMappingURL=auth.js.map
+
+/***/ }),
+
+/***/ 1825:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+const http = __importStar(__nccwpck_require__(8605));
+const https = __importStar(__nccwpck_require__(7211));
+const pm = __importStar(__nccwpck_require__(4977));
+const tunnel = __importStar(__nccwpck_require__(4294));
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers = exports.Headers || (exports.Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
+/**
+ * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
+ * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+ */
+function getProxyUrl(serverUrl) {
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    return proxyUrl ? proxyUrl.href : '';
+}
+exports.getProxyUrl = getProxyUrl;
+const HttpRedirectCodes = [
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+const HttpResponseRetryCodes = [
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
+const ExponentialBackoffCeiling = 10;
+const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+exports.HttpClientError = HttpClientError;
+class HttpClientResponse {
+    constructor(message) {
+        this.message = message;
+    }
+    readBody() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
+        });
+    }
+}
+exports.HttpClientResponse = HttpClientResponse;
+function isHttps(requestUrl) {
+    const parsedUrl = new URL(requestUrl);
+    return parsedUrl.protocol === 'https:';
+}
+exports.isHttps = isHttps;
+class HttpClient {
+    constructor(userAgent, handlers, requestOptions) {
+        this._ignoreSslError = false;
+        this._allowRedirects = true;
+        this._allowRedirectDowngrade = false;
+        this._maxRedirects = 50;
+        this._allowRetries = false;
+        this._maxRetries = 1;
+        this._keepAlive = false;
+        this._disposed = false;
+        this.userAgent = userAgent;
+        this.handlers = handlers || [];
+        this.requestOptions = requestOptions;
+        if (requestOptions) {
+            if (requestOptions.ignoreSslError != null) {
+                this._ignoreSslError = requestOptions.ignoreSslError;
+            }
+            this._socketTimeout = requestOptions.socketTimeout;
+            if (requestOptions.allowRedirects != null) {
+                this._allowRedirects = requestOptions.allowRedirects;
+            }
+            if (requestOptions.allowRedirectDowngrade != null) {
+                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+            }
+            if (requestOptions.maxRedirects != null) {
+                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+            }
+            if (requestOptions.keepAlive != null) {
+                this._keepAlive = requestOptions.keepAlive;
+            }
+            if (requestOptions.allowRetries != null) {
+                this._allowRetries = requestOptions.allowRetries;
+            }
+            if (requestOptions.maxRetries != null) {
+                this._maxRetries = requestOptions.maxRetries;
+            }
+        }
+    }
+    options(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    get(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    del(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    post(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    patch(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    put(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    head(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    sendStream(verb, requestUrl, stream, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
+    }
+    /**
+     * Gets a typed object from an endpoint
+     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+     */
+    getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    /**
+     * Makes a raw http request.
+     * All other methods such as get, post, patch, and request ultimately call this.
+     * Prefer get, del, post and patch
+     */
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
+            }
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
+                        }
+                    }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
+                }
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
+    }
+    /**
+     * Needs to be called if keepAlive is set to true in request options.
+     */
+    dispose() {
+        if (this._agent) {
+            this._agent.destroy();
+        }
+        this._disposed = true;
+    }
+    /**
+     * Raw request.
+     * @param info
+     * @param data
+     */
+    requestRaw(info, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
+                }
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
+        });
+    }
+    /**
+     * Raw request with callback.
+     * @param info
+     * @param data
+     * @param onResult
+     */
+    requestRawWithCallback(info, data, onResult) {
+        if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
+            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+        }
+        let callbackCalled = false;
+        function handleResult(err, res) {
+            if (!callbackCalled) {
+                callbackCalled = true;
+                onResult(err, res);
+            }
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
+        });
+        let socket;
+        req.on('socket', sock => {
+            socket = sock;
+        });
+        // If we ever get disconnected, we want the socket to timeout eventually
+        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
+            if (socket) {
+                socket.end();
+            }
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
+        });
+        req.on('error', function (err) {
+            // err has statusCode property
+            // res should have headers
+            handleResult(err);
+        });
+        if (data && typeof data === 'string') {
+            req.write(data, 'utf8');
+        }
+        if (data && typeof data !== 'string') {
+            data.on('close', function () {
+                req.end();
+            });
+            data.pipe(req);
+        }
+        else {
+            req.end();
+        }
+    }
+    /**
+     * Gets an http agent. This function is useful when you need an http agent that handles
+     * routing through a proxy server - depending upon the url and proxy environment variables.
+     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+     */
+    getAgent(serverUrl) {
+        const parsedUrl = new URL(serverUrl);
+        return this._getAgent(parsedUrl);
+    }
+    _prepareRequest(method, requestUrl, headers) {
+        const info = {};
+        info.parsedUrl = requestUrl;
+        const usingSsl = info.parsedUrl.protocol === 'https:';
+        info.httpModule = usingSsl ? https : http;
+        const defaultPort = usingSsl ? 443 : 80;
+        info.options = {};
+        info.options.host = info.parsedUrl.hostname;
+        info.options.port = info.parsedUrl.port
+            ? parseInt(info.parsedUrl.port)
+            : defaultPort;
+        info.options.path =
+            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
+        info.options.method = method;
+        info.options.headers = this._mergeHeaders(headers);
+        if (this.userAgent != null) {
+            info.options.headers['user-agent'] = this.userAgent;
+        }
+        info.options.agent = this._getAgent(info.parsedUrl);
+        // gives handlers an opportunity to participate
+        if (this.handlers) {
+            for (const handler of this.handlers) {
+                handler.prepareRequest(info.options);
+            }
+        }
+        return info;
+    }
+    _mergeHeaders(headers) {
+        if (this.requestOptions && this.requestOptions.headers) {
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
+        }
+        return lowercaseKeys(headers || {});
+    }
+    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
+        }
+        return additionalHeaders[header] || clientHeader || _default;
+    }
+    _getAgent(parsedUrl) {
+        let agent;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
+        if (this._keepAlive && useProxy) {
+            agent = this._proxyAgent;
+        }
+        if (this._keepAlive && !useProxy) {
+            agent = this._agent;
+        }
+        // if agent is already assigned use that agent.
+        if (agent) {
+            return agent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        let maxSockets = 100;
+        if (this.requestOptions) {
+            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+        }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
+            const agentOptions = {
+                maxSockets,
+                keepAlive: this._keepAlive,
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
+            };
+            let tunnelAgent;
+            const overHttps = proxyUrl.protocol === 'https:';
+            if (usingSsl) {
+                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+            }
+            else {
+                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+            }
+            agent = tunnelAgent(agentOptions);
+            this._proxyAgent = agent;
+        }
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
+            const options = { keepAlive: this._keepAlive, maxSockets };
+            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
+        }
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            agent.options = Object.assign(agent.options || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return agent;
+    }
+    _performExponentialBackoff(retryNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
+    }
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
+                    }
+                    else {
+                        msg = `Failed request: (${statusCode})`;
+                    }
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
+                }
+                else {
+                    resolve(response);
+                }
+            }));
+        });
+    }
+}
+exports.HttpClient = HttpClient;
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 4977:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkBypass = exports.getProxyUrl = void 0;
+function getProxyUrl(reqUrl) {
+    const usingSsl = reqUrl.protocol === 'https:';
+    if (checkBypass(reqUrl)) {
+        return undefined;
+    }
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        return new URL(proxyVar);
+    }
+    else {
+        return undefined;
+    }
+}
+exports.getProxyUrl = getProxyUrl;
+function checkBypass(reqUrl) {
+    if (!reqUrl.hostname) {
+        return false;
+    }
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    if (!noProxy) {
+        return false;
+    }
+    // Determine the request port
+    let reqPort;
+    if (reqUrl.port) {
+        reqPort = Number(reqUrl.port);
+    }
+    else if (reqUrl.protocol === 'http:') {
+        reqPort = 80;
+    }
+    else if (reqUrl.protocol === 'https:') {
+        reqPort = 443;
+    }
+    // Format the request hostname and hostname with port
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    if (typeof reqPort === 'number') {
+        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+    }
+    // Compare request host against noproxy
+    for (const upperNoProxyItem of noProxy
+        .split(',')
+        .map(x => x.trim().toUpperCase())
+        .filter(x => x)) {
+        if (upperReqHosts.some(x => x === upperNoProxyItem)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.checkBypass = checkBypass;
+//# sourceMappingURL=proxy.js.map
 
 /***/ }),
 
@@ -4394,10 +5165,15 @@ function getIDToken(aud) {
 }
 exports.getIDToken = getIDToken;
 /**
- * Markdown summary exports
+ * Summary exports
  */
-var markdown_summary_1 = __nccwpck_require__(8042);
-Object.defineProperty(exports, "markdownSummary", ({ enumerable: true, get: function () { return markdown_summary_1.markdownSummary; } }));
+var summary_1 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "summary", ({ enumerable: true, get: function () { return summary_1.summary; } }));
+/**
+ * @deprecated use core.summary
+ */
+var summary_2 = __nccwpck_require__(1327);
+Object.defineProperty(exports, "markdownSummary", ({ enumerable: true, get: function () { return summary_2.markdownSummary; } }));
 //# sourceMappingURL=core.js.map
 
 /***/ }),
@@ -4451,292 +5227,6 @@ exports.issueCommand = issueCommand;
 
 /***/ }),
 
-/***/ 8042:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = void 0;
-const os_1 = __nccwpck_require__(2087);
-const fs_1 = __nccwpck_require__(5747);
-const { access, appendFile, writeFile } = fs_1.promises;
-exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
-exports.SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-markdown-summary';
-class MarkdownSummary {
-    constructor() {
-        this._buffer = '';
-    }
-    /**
-     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
-     * Also checks r/w permissions.
-     *
-     * @returns step summary file path
-     */
-    filePath() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (this._filePath) {
-                return this._filePath;
-            }
-            const pathFromEnv = process.env[exports.SUMMARY_ENV_VAR];
-            if (!pathFromEnv) {
-                throw new Error(`Unable to find environment variable for $${exports.SUMMARY_ENV_VAR}. Check if your runtime environment supports markdown summaries.`);
-            }
-            try {
-                yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
-            }
-            catch (_a) {
-                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
-            }
-            this._filePath = pathFromEnv;
-            return this._filePath;
-        });
-    }
-    /**
-     * Wraps content in an HTML tag, adding any HTML attributes
-     *
-     * @param {string} tag HTML tag to wrap
-     * @param {string | null} content content within the tag
-     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
-     *
-     * @returns {string} content wrapped in HTML element
-     */
-    wrap(tag, content, attrs = {}) {
-        const htmlAttrs = Object.entries(attrs)
-            .map(([key, value]) => ` ${key}="${value}"`)
-            .join('');
-        if (!content) {
-            return `<${tag}${htmlAttrs}>`;
-        }
-        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
-    }
-    /**
-     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
-     *
-     * @param {SummaryWriteOptions} [options] (optional) options for write operation
-     *
-     * @returns {Promise<MarkdownSummary>} markdown summary instance
-     */
-    write(options) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
-            const filePath = yield this.filePath();
-            const writeFunc = overwrite ? writeFile : appendFile;
-            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
-            return this.emptyBuffer();
-        });
-    }
-    /**
-     * Clears the summary buffer and wipes the summary file
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    clear() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return this.emptyBuffer().write({ overwrite: true });
-        });
-    }
-    /**
-     * Returns the current summary buffer as a string
-     *
-     * @returns {string} string of summary buffer
-     */
-    stringify() {
-        return this._buffer;
-    }
-    /**
-     * If the summary buffer is empty
-     *
-     * @returns {boolen} true if the buffer is empty
-     */
-    isEmptyBuffer() {
-        return this._buffer.length === 0;
-    }
-    /**
-     * Resets the summary buffer without writing to summary file
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    emptyBuffer() {
-        this._buffer = '';
-        return this;
-    }
-    /**
-     * Adds raw text to the summary buffer
-     *
-     * @param {string} text content to add
-     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addRaw(text, addEOL = false) {
-        this._buffer += text;
-        return addEOL ? this.addEOL() : this;
-    }
-    /**
-     * Adds the operating system-specific end-of-line marker to the buffer
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addEOL() {
-        return this.addRaw(os_1.EOL);
-    }
-    /**
-     * Adds an HTML codeblock to the summary buffer
-     *
-     * @param {string} code content to render within fenced code block
-     * @param {string} lang (optional) language to syntax highlight code
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addCodeBlock(code, lang) {
-        const attrs = Object.assign({}, (lang && { lang }));
-        const element = this.wrap('pre', this.wrap('code', code), attrs);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML list to the summary buffer
-     *
-     * @param {string[]} items list of items to render
-     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addList(items, ordered = false) {
-        const tag = ordered ? 'ol' : 'ul';
-        const listItems = items.map(item => this.wrap('li', item)).join('');
-        const element = this.wrap(tag, listItems);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML table to the summary buffer
-     *
-     * @param {SummaryTableCell[]} rows table rows
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addTable(rows) {
-        const tableBody = rows
-            .map(row => {
-            const cells = row
-                .map(cell => {
-                if (typeof cell === 'string') {
-                    return this.wrap('td', cell);
-                }
-                const { header, data, colspan, rowspan } = cell;
-                const tag = header ? 'th' : 'td';
-                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
-                return this.wrap(tag, data, attrs);
-            })
-                .join('');
-            return this.wrap('tr', cells);
-        })
-            .join('');
-        const element = this.wrap('table', tableBody);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds a collapsable HTML details element to the summary buffer
-     *
-     * @param {string} label text for the closed state
-     * @param {string} content collapsable content
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addDetails(label, content) {
-        const element = this.wrap('details', this.wrap('summary', label) + content);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML image tag to the summary buffer
-     *
-     * @param {string} src path to the image you to embed
-     * @param {string} alt text description of the image
-     * @param {SummaryImageOptions} options (optional) addition image attributes
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addImage(src, alt, options) {
-        const { width, height } = options || {};
-        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
-        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML section heading element
-     *
-     * @param {string} text heading text
-     * @param {number | string} [level=1] (optional) the heading level, default: 1
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addHeading(text, level) {
-        const tag = `h${level}`;
-        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
-            ? tag
-            : 'h1';
-        const element = this.wrap(allowedTag, text);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML thematic break (<hr>) to the summary buffer
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addSeparator() {
-        const element = this.wrap('hr', null);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML line break (<br>) to the summary buffer
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addBreak() {
-        const element = this.wrap('br', null);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML blockquote to the summary buffer
-     *
-     * @param {string} text quote text
-     * @param {string} cite (optional) citation url
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addQuote(text, cite) {
-        const attrs = Object.assign({}, (cite && { cite }));
-        const element = this.wrap('blockquote', text, attrs);
-        return this.addRaw(element).addEOL();
-    }
-    /**
-     * Adds an HTML anchor tag to the summary buffer
-     *
-     * @param {string} text link text/content
-     * @param {string} href hyperlink
-     *
-     * @returns {MarkdownSummary} markdown summary instance
-     */
-    addLink(text, href) {
-        const element = this.wrap('a', text, { href });
-        return this.addRaw(element).addEOL();
-    }
-}
-// singleton export
-exports.markdownSummary = new MarkdownSummary();
-//# sourceMappingURL=markdown-summary.js.map
-
-/***/ }),
-
 /***/ 8041:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -4753,8 +5243,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.OidcClient = void 0;
-const http_client_1 = __nccwpck_require__(9925);
-const auth_1 = __nccwpck_require__(3702);
+const http_client_1 = __nccwpck_require__(1404);
+const auth_1 = __nccwpck_require__(6758);
 const core_1 = __nccwpck_require__(2186);
 class OidcClient {
     static createHttpClient(allowRetry = true, maxRetry = 10) {
@@ -4821,6 +5311,296 @@ exports.OidcClient = OidcClient;
 
 /***/ }),
 
+/***/ 1327:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.summary = exports.markdownSummary = exports.SUMMARY_DOCS_URL = exports.SUMMARY_ENV_VAR = void 0;
+const os_1 = __nccwpck_require__(2087);
+const fs_1 = __nccwpck_require__(5747);
+const { access, appendFile, writeFile } = fs_1.promises;
+exports.SUMMARY_ENV_VAR = 'GITHUB_STEP_SUMMARY';
+exports.SUMMARY_DOCS_URL = 'https://docs.github.com/actions/using-workflows/workflow-commands-for-github-actions#adding-a-job-summary';
+class Summary {
+    constructor() {
+        this._buffer = '';
+    }
+    /**
+     * Finds the summary file path from the environment, rejects if env var is not found or file does not exist
+     * Also checks r/w permissions.
+     *
+     * @returns step summary file path
+     */
+    filePath() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._filePath) {
+                return this._filePath;
+            }
+            const pathFromEnv = process.env[exports.SUMMARY_ENV_VAR];
+            if (!pathFromEnv) {
+                throw new Error(`Unable to find environment variable for $${exports.SUMMARY_ENV_VAR}. Check if your runtime environment supports job summaries.`);
+            }
+            try {
+                yield access(pathFromEnv, fs_1.constants.R_OK | fs_1.constants.W_OK);
+            }
+            catch (_a) {
+                throw new Error(`Unable to access summary file: '${pathFromEnv}'. Check if the file has correct read/write permissions.`);
+            }
+            this._filePath = pathFromEnv;
+            return this._filePath;
+        });
+    }
+    /**
+     * Wraps content in an HTML tag, adding any HTML attributes
+     *
+     * @param {string} tag HTML tag to wrap
+     * @param {string | null} content content within the tag
+     * @param {[attribute: string]: string} attrs key-value list of HTML attributes to add
+     *
+     * @returns {string} content wrapped in HTML element
+     */
+    wrap(tag, content, attrs = {}) {
+        const htmlAttrs = Object.entries(attrs)
+            .map(([key, value]) => ` ${key}="${value}"`)
+            .join('');
+        if (!content) {
+            return `<${tag}${htmlAttrs}>`;
+        }
+        return `<${tag}${htmlAttrs}>${content}</${tag}>`;
+    }
+    /**
+     * Writes text in the buffer to the summary buffer file and empties buffer. Will append by default.
+     *
+     * @param {SummaryWriteOptions} [options] (optional) options for write operation
+     *
+     * @returns {Promise<Summary>} summary instance
+     */
+    write(options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const overwrite = !!(options === null || options === void 0 ? void 0 : options.overwrite);
+            const filePath = yield this.filePath();
+            const writeFunc = overwrite ? writeFile : appendFile;
+            yield writeFunc(filePath, this._buffer, { encoding: 'utf8' });
+            return this.emptyBuffer();
+        });
+    }
+    /**
+     * Clears the summary buffer and wipes the summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    clear() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.emptyBuffer().write({ overwrite: true });
+        });
+    }
+    /**
+     * Returns the current summary buffer as a string
+     *
+     * @returns {string} string of summary buffer
+     */
+    stringify() {
+        return this._buffer;
+    }
+    /**
+     * If the summary buffer is empty
+     *
+     * @returns {boolen} true if the buffer is empty
+     */
+    isEmptyBuffer() {
+        return this._buffer.length === 0;
+    }
+    /**
+     * Resets the summary buffer without writing to summary file
+     *
+     * @returns {Summary} summary instance
+     */
+    emptyBuffer() {
+        this._buffer = '';
+        return this;
+    }
+    /**
+     * Adds raw text to the summary buffer
+     *
+     * @param {string} text content to add
+     * @param {boolean} [addEOL=false] (optional) append an EOL to the raw text (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addRaw(text, addEOL = false) {
+        this._buffer += text;
+        return addEOL ? this.addEOL() : this;
+    }
+    /**
+     * Adds the operating system-specific end-of-line marker to the buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addEOL() {
+        return this.addRaw(os_1.EOL);
+    }
+    /**
+     * Adds an HTML codeblock to the summary buffer
+     *
+     * @param {string} code content to render within fenced code block
+     * @param {string} lang (optional) language to syntax highlight code
+     *
+     * @returns {Summary} summary instance
+     */
+    addCodeBlock(code, lang) {
+        const attrs = Object.assign({}, (lang && { lang }));
+        const element = this.wrap('pre', this.wrap('code', code), attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML list to the summary buffer
+     *
+     * @param {string[]} items list of items to render
+     * @param {boolean} [ordered=false] (optional) if the rendered list should be ordered or not (default: false)
+     *
+     * @returns {Summary} summary instance
+     */
+    addList(items, ordered = false) {
+        const tag = ordered ? 'ol' : 'ul';
+        const listItems = items.map(item => this.wrap('li', item)).join('');
+        const element = this.wrap(tag, listItems);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML table to the summary buffer
+     *
+     * @param {SummaryTableCell[]} rows table rows
+     *
+     * @returns {Summary} summary instance
+     */
+    addTable(rows) {
+        const tableBody = rows
+            .map(row => {
+            const cells = row
+                .map(cell => {
+                if (typeof cell === 'string') {
+                    return this.wrap('td', cell);
+                }
+                const { header, data, colspan, rowspan } = cell;
+                const tag = header ? 'th' : 'td';
+                const attrs = Object.assign(Object.assign({}, (colspan && { colspan })), (rowspan && { rowspan }));
+                return this.wrap(tag, data, attrs);
+            })
+                .join('');
+            return this.wrap('tr', cells);
+        })
+            .join('');
+        const element = this.wrap('table', tableBody);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds a collapsable HTML details element to the summary buffer
+     *
+     * @param {string} label text for the closed state
+     * @param {string} content collapsable content
+     *
+     * @returns {Summary} summary instance
+     */
+    addDetails(label, content) {
+        const element = this.wrap('details', this.wrap('summary', label) + content);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML image tag to the summary buffer
+     *
+     * @param {string} src path to the image you to embed
+     * @param {string} alt text description of the image
+     * @param {SummaryImageOptions} options (optional) addition image attributes
+     *
+     * @returns {Summary} summary instance
+     */
+    addImage(src, alt, options) {
+        const { width, height } = options || {};
+        const attrs = Object.assign(Object.assign({}, (width && { width })), (height && { height }));
+        const element = this.wrap('img', null, Object.assign({ src, alt }, attrs));
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML section heading element
+     *
+     * @param {string} text heading text
+     * @param {number | string} [level=1] (optional) the heading level, default: 1
+     *
+     * @returns {Summary} summary instance
+     */
+    addHeading(text, level) {
+        const tag = `h${level}`;
+        const allowedTag = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tag)
+            ? tag
+            : 'h1';
+        const element = this.wrap(allowedTag, text);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML thematic break (<hr>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addSeparator() {
+        const element = this.wrap('hr', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML line break (<br>) to the summary buffer
+     *
+     * @returns {Summary} summary instance
+     */
+    addBreak() {
+        const element = this.wrap('br', null);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML blockquote to the summary buffer
+     *
+     * @param {string} text quote text
+     * @param {string} cite (optional) citation url
+     *
+     * @returns {Summary} summary instance
+     */
+    addQuote(text, cite) {
+        const attrs = Object.assign({}, (cite && { cite }));
+        const element = this.wrap('blockquote', text, attrs);
+        return this.addRaw(element).addEOL();
+    }
+    /**
+     * Adds an HTML anchor tag to the summary buffer
+     *
+     * @param {string} text link text/content
+     * @param {string} href hyperlink
+     *
+     * @returns {Summary} summary instance
+     */
+    addLink(text, href) {
+        const element = this.wrap('a', text, { href });
+        return this.addRaw(element).addEOL();
+    }
+}
+const _summary = new Summary();
+/**
+ * @deprecated use `core.summary`
+ */
+exports.markdownSummary = _summary;
+exports.summary = _summary;
+//# sourceMappingURL=summary.js.map
+
+/***/ }),
+
 /***/ 5278:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -4865,6 +5645,774 @@ function toCommandProperties(annotationProperties) {
 }
 exports.toCommandProperties = toCommandProperties;
 //# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 6758:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.PersonalAccessTokenCredentialHandler = exports.BearerCredentialHandler = exports.BasicCredentialHandler = void 0;
+class BasicCredentialHandler {
+    constructor(username, password) {
+        this.username = username;
+        this.password = password;
+    }
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`${this.username}:${this.password}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.BasicCredentialHandler = BasicCredentialHandler;
+class BearerCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Bearer ${this.token}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.BearerCredentialHandler = BearerCredentialHandler;
+class PersonalAccessTokenCredentialHandler {
+    constructor(token) {
+        this.token = token;
+    }
+    // currently implements pre-authorization
+    // TODO: support preAuth = false where it hooks on 401
+    prepareRequest(options) {
+        if (!options.headers) {
+            throw Error('The request has no headers');
+        }
+        options.headers['Authorization'] = `Basic ${Buffer.from(`PAT:${this.token}`).toString('base64')}`;
+    }
+    // This handler cannot handle 401
+    canHandleAuthentication() {
+        return false;
+    }
+    handleAuthentication() {
+        return __awaiter(this, void 0, void 0, function* () {
+            throw new Error('not implemented');
+        });
+    }
+}
+exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
+//# sourceMappingURL=auth.js.map
+
+/***/ }),
+
+/***/ 1404:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+const http = __importStar(__nccwpck_require__(8605));
+const https = __importStar(__nccwpck_require__(7211));
+const pm = __importStar(__nccwpck_require__(2843));
+const tunnel = __importStar(__nccwpck_require__(4294));
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers = exports.Headers || (exports.Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
+/**
+ * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
+ * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+ */
+function getProxyUrl(serverUrl) {
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    return proxyUrl ? proxyUrl.href : '';
+}
+exports.getProxyUrl = getProxyUrl;
+const HttpRedirectCodes = [
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+const HttpResponseRetryCodes = [
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
+const ExponentialBackoffCeiling = 10;
+const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+exports.HttpClientError = HttpClientError;
+class HttpClientResponse {
+    constructor(message) {
+        this.message = message;
+    }
+    readBody() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
+        });
+    }
+}
+exports.HttpClientResponse = HttpClientResponse;
+function isHttps(requestUrl) {
+    const parsedUrl = new URL(requestUrl);
+    return parsedUrl.protocol === 'https:';
+}
+exports.isHttps = isHttps;
+class HttpClient {
+    constructor(userAgent, handlers, requestOptions) {
+        this._ignoreSslError = false;
+        this._allowRedirects = true;
+        this._allowRedirectDowngrade = false;
+        this._maxRedirects = 50;
+        this._allowRetries = false;
+        this._maxRetries = 1;
+        this._keepAlive = false;
+        this._disposed = false;
+        this.userAgent = userAgent;
+        this.handlers = handlers || [];
+        this.requestOptions = requestOptions;
+        if (requestOptions) {
+            if (requestOptions.ignoreSslError != null) {
+                this._ignoreSslError = requestOptions.ignoreSslError;
+            }
+            this._socketTimeout = requestOptions.socketTimeout;
+            if (requestOptions.allowRedirects != null) {
+                this._allowRedirects = requestOptions.allowRedirects;
+            }
+            if (requestOptions.allowRedirectDowngrade != null) {
+                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+            }
+            if (requestOptions.maxRedirects != null) {
+                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+            }
+            if (requestOptions.keepAlive != null) {
+                this._keepAlive = requestOptions.keepAlive;
+            }
+            if (requestOptions.allowRetries != null) {
+                this._allowRetries = requestOptions.allowRetries;
+            }
+            if (requestOptions.maxRetries != null) {
+                this._maxRetries = requestOptions.maxRetries;
+            }
+        }
+    }
+    options(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    get(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    del(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    post(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    patch(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    put(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    head(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    sendStream(verb, requestUrl, stream, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
+    }
+    /**
+     * Gets a typed object from an endpoint
+     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+     */
+    getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    /**
+     * Makes a raw http request.
+     * All other methods such as get, post, patch, and request ultimately call this.
+     * Prefer get, del, post and patch
+     */
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
+            }
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
+                        }
+                    }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
+                }
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
+    }
+    /**
+     * Needs to be called if keepAlive is set to true in request options.
+     */
+    dispose() {
+        if (this._agent) {
+            this._agent.destroy();
+        }
+        this._disposed = true;
+    }
+    /**
+     * Raw request.
+     * @param info
+     * @param data
+     */
+    requestRaw(info, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
+                }
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
+        });
+    }
+    /**
+     * Raw request with callback.
+     * @param info
+     * @param data
+     * @param onResult
+     */
+    requestRawWithCallback(info, data, onResult) {
+        if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
+            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+        }
+        let callbackCalled = false;
+        function handleResult(err, res) {
+            if (!callbackCalled) {
+                callbackCalled = true;
+                onResult(err, res);
+            }
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
+        });
+        let socket;
+        req.on('socket', sock => {
+            socket = sock;
+        });
+        // If we ever get disconnected, we want the socket to timeout eventually
+        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
+            if (socket) {
+                socket.end();
+            }
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
+        });
+        req.on('error', function (err) {
+            // err has statusCode property
+            // res should have headers
+            handleResult(err);
+        });
+        if (data && typeof data === 'string') {
+            req.write(data, 'utf8');
+        }
+        if (data && typeof data !== 'string') {
+            data.on('close', function () {
+                req.end();
+            });
+            data.pipe(req);
+        }
+        else {
+            req.end();
+        }
+    }
+    /**
+     * Gets an http agent. This function is useful when you need an http agent that handles
+     * routing through a proxy server - depending upon the url and proxy environment variables.
+     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+     */
+    getAgent(serverUrl) {
+        const parsedUrl = new URL(serverUrl);
+        return this._getAgent(parsedUrl);
+    }
+    _prepareRequest(method, requestUrl, headers) {
+        const info = {};
+        info.parsedUrl = requestUrl;
+        const usingSsl = info.parsedUrl.protocol === 'https:';
+        info.httpModule = usingSsl ? https : http;
+        const defaultPort = usingSsl ? 443 : 80;
+        info.options = {};
+        info.options.host = info.parsedUrl.hostname;
+        info.options.port = info.parsedUrl.port
+            ? parseInt(info.parsedUrl.port)
+            : defaultPort;
+        info.options.path =
+            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
+        info.options.method = method;
+        info.options.headers = this._mergeHeaders(headers);
+        if (this.userAgent != null) {
+            info.options.headers['user-agent'] = this.userAgent;
+        }
+        info.options.agent = this._getAgent(info.parsedUrl);
+        // gives handlers an opportunity to participate
+        if (this.handlers) {
+            for (const handler of this.handlers) {
+                handler.prepareRequest(info.options);
+            }
+        }
+        return info;
+    }
+    _mergeHeaders(headers) {
+        if (this.requestOptions && this.requestOptions.headers) {
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
+        }
+        return lowercaseKeys(headers || {});
+    }
+    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
+        }
+        return additionalHeaders[header] || clientHeader || _default;
+    }
+    _getAgent(parsedUrl) {
+        let agent;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
+        if (this._keepAlive && useProxy) {
+            agent = this._proxyAgent;
+        }
+        if (this._keepAlive && !useProxy) {
+            agent = this._agent;
+        }
+        // if agent is already assigned use that agent.
+        if (agent) {
+            return agent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        let maxSockets = 100;
+        if (this.requestOptions) {
+            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+        }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
+            const agentOptions = {
+                maxSockets,
+                keepAlive: this._keepAlive,
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
+            };
+            let tunnelAgent;
+            const overHttps = proxyUrl.protocol === 'https:';
+            if (usingSsl) {
+                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+            }
+            else {
+                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+            }
+            agent = tunnelAgent(agentOptions);
+            this._proxyAgent = agent;
+        }
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
+            const options = { keepAlive: this._keepAlive, maxSockets };
+            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
+        }
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            agent.options = Object.assign(agent.options || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return agent;
+    }
+    _performExponentialBackoff(retryNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
+    }
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
+                    }
+                    else {
+                        msg = `Failed request: (${statusCode})`;
+                    }
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
+                }
+                else {
+                    resolve(response);
+                }
+            }));
+        });
+    }
+}
+exports.HttpClient = HttpClient;
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 2843:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkBypass = exports.getProxyUrl = void 0;
+function getProxyUrl(reqUrl) {
+    const usingSsl = reqUrl.protocol === 'https:';
+    if (checkBypass(reqUrl)) {
+        return undefined;
+    }
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        return new URL(proxyVar);
+    }
+    else {
+        return undefined;
+    }
+}
+exports.getProxyUrl = getProxyUrl;
+function checkBypass(reqUrl) {
+    if (!reqUrl.hostname) {
+        return false;
+    }
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    if (!noProxy) {
+        return false;
+    }
+    // Determine the request port
+    let reqPort;
+    if (reqUrl.port) {
+        reqPort = Number(reqUrl.port);
+    }
+    else if (reqUrl.protocol === 'http:') {
+        reqPort = 80;
+    }
+    else if (reqUrl.protocol === 'https:') {
+        reqPort = 443;
+    }
+    // Format the request hostname and hostname with port
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    if (typeof reqPort === 'number') {
+        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+    }
+    // Compare request host against noproxy
+    for (const upperNoProxyItem of noProxy
+        .split(',')
+        .map(x => x.trim().toUpperCase())
+        .filter(x => x)) {
+        if (upperReqHosts.some(x => x === upperNoProxyItem)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.checkBypass = checkBypass;
+//# sourceMappingURL=proxy.js.map
 
 /***/ }),
 
@@ -5733,7 +7281,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getApiBaseUrl = exports.getProxyAgent = exports.getAuthString = void 0;
-const httpClient = __importStar(__nccwpck_require__(9925));
+const httpClient = __importStar(__nccwpck_require__(6341));
 function getAuthString(token, options) {
     if (!token && !options.auth) {
         throw new Error('Parameter token or opts.auth is required');
@@ -5815,6 +7363,686 @@ function getOctokitOptions(token, options) {
 }
 exports.getOctokitOptions = getOctokitOptions;
 //# sourceMappingURL=utils.js.map
+
+/***/ }),
+
+/***/ 6341:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.HttpClient = exports.isHttps = exports.HttpClientResponse = exports.HttpClientError = exports.getProxyUrl = exports.MediaTypes = exports.Headers = exports.HttpCodes = void 0;
+const http = __importStar(__nccwpck_require__(8605));
+const https = __importStar(__nccwpck_require__(7211));
+const pm = __importStar(__nccwpck_require__(3186));
+const tunnel = __importStar(__nccwpck_require__(4294));
+var HttpCodes;
+(function (HttpCodes) {
+    HttpCodes[HttpCodes["OK"] = 200] = "OK";
+    HttpCodes[HttpCodes["MultipleChoices"] = 300] = "MultipleChoices";
+    HttpCodes[HttpCodes["MovedPermanently"] = 301] = "MovedPermanently";
+    HttpCodes[HttpCodes["ResourceMoved"] = 302] = "ResourceMoved";
+    HttpCodes[HttpCodes["SeeOther"] = 303] = "SeeOther";
+    HttpCodes[HttpCodes["NotModified"] = 304] = "NotModified";
+    HttpCodes[HttpCodes["UseProxy"] = 305] = "UseProxy";
+    HttpCodes[HttpCodes["SwitchProxy"] = 306] = "SwitchProxy";
+    HttpCodes[HttpCodes["TemporaryRedirect"] = 307] = "TemporaryRedirect";
+    HttpCodes[HttpCodes["PermanentRedirect"] = 308] = "PermanentRedirect";
+    HttpCodes[HttpCodes["BadRequest"] = 400] = "BadRequest";
+    HttpCodes[HttpCodes["Unauthorized"] = 401] = "Unauthorized";
+    HttpCodes[HttpCodes["PaymentRequired"] = 402] = "PaymentRequired";
+    HttpCodes[HttpCodes["Forbidden"] = 403] = "Forbidden";
+    HttpCodes[HttpCodes["NotFound"] = 404] = "NotFound";
+    HttpCodes[HttpCodes["MethodNotAllowed"] = 405] = "MethodNotAllowed";
+    HttpCodes[HttpCodes["NotAcceptable"] = 406] = "NotAcceptable";
+    HttpCodes[HttpCodes["ProxyAuthenticationRequired"] = 407] = "ProxyAuthenticationRequired";
+    HttpCodes[HttpCodes["RequestTimeout"] = 408] = "RequestTimeout";
+    HttpCodes[HttpCodes["Conflict"] = 409] = "Conflict";
+    HttpCodes[HttpCodes["Gone"] = 410] = "Gone";
+    HttpCodes[HttpCodes["TooManyRequests"] = 429] = "TooManyRequests";
+    HttpCodes[HttpCodes["InternalServerError"] = 500] = "InternalServerError";
+    HttpCodes[HttpCodes["NotImplemented"] = 501] = "NotImplemented";
+    HttpCodes[HttpCodes["BadGateway"] = 502] = "BadGateway";
+    HttpCodes[HttpCodes["ServiceUnavailable"] = 503] = "ServiceUnavailable";
+    HttpCodes[HttpCodes["GatewayTimeout"] = 504] = "GatewayTimeout";
+})(HttpCodes = exports.HttpCodes || (exports.HttpCodes = {}));
+var Headers;
+(function (Headers) {
+    Headers["Accept"] = "accept";
+    Headers["ContentType"] = "content-type";
+})(Headers = exports.Headers || (exports.Headers = {}));
+var MediaTypes;
+(function (MediaTypes) {
+    MediaTypes["ApplicationJson"] = "application/json";
+})(MediaTypes = exports.MediaTypes || (exports.MediaTypes = {}));
+/**
+ * Returns the proxy URL, depending upon the supplied url and proxy environment variables.
+ * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+ */
+function getProxyUrl(serverUrl) {
+    const proxyUrl = pm.getProxyUrl(new URL(serverUrl));
+    return proxyUrl ? proxyUrl.href : '';
+}
+exports.getProxyUrl = getProxyUrl;
+const HttpRedirectCodes = [
+    HttpCodes.MovedPermanently,
+    HttpCodes.ResourceMoved,
+    HttpCodes.SeeOther,
+    HttpCodes.TemporaryRedirect,
+    HttpCodes.PermanentRedirect
+];
+const HttpResponseRetryCodes = [
+    HttpCodes.BadGateway,
+    HttpCodes.ServiceUnavailable,
+    HttpCodes.GatewayTimeout
+];
+const RetryableHttpVerbs = ['OPTIONS', 'GET', 'DELETE', 'HEAD'];
+const ExponentialBackoffCeiling = 10;
+const ExponentialBackoffTimeSlice = 5;
+class HttpClientError extends Error {
+    constructor(message, statusCode) {
+        super(message);
+        this.name = 'HttpClientError';
+        this.statusCode = statusCode;
+        Object.setPrototypeOf(this, HttpClientError.prototype);
+    }
+}
+exports.HttpClientError = HttpClientError;
+class HttpClientResponse {
+    constructor(message) {
+        this.message = message;
+    }
+    readBody() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve) => __awaiter(this, void 0, void 0, function* () {
+                let output = Buffer.alloc(0);
+                this.message.on('data', (chunk) => {
+                    output = Buffer.concat([output, chunk]);
+                });
+                this.message.on('end', () => {
+                    resolve(output.toString());
+                });
+            }));
+        });
+    }
+}
+exports.HttpClientResponse = HttpClientResponse;
+function isHttps(requestUrl) {
+    const parsedUrl = new URL(requestUrl);
+    return parsedUrl.protocol === 'https:';
+}
+exports.isHttps = isHttps;
+class HttpClient {
+    constructor(userAgent, handlers, requestOptions) {
+        this._ignoreSslError = false;
+        this._allowRedirects = true;
+        this._allowRedirectDowngrade = false;
+        this._maxRedirects = 50;
+        this._allowRetries = false;
+        this._maxRetries = 1;
+        this._keepAlive = false;
+        this._disposed = false;
+        this.userAgent = userAgent;
+        this.handlers = handlers || [];
+        this.requestOptions = requestOptions;
+        if (requestOptions) {
+            if (requestOptions.ignoreSslError != null) {
+                this._ignoreSslError = requestOptions.ignoreSslError;
+            }
+            this._socketTimeout = requestOptions.socketTimeout;
+            if (requestOptions.allowRedirects != null) {
+                this._allowRedirects = requestOptions.allowRedirects;
+            }
+            if (requestOptions.allowRedirectDowngrade != null) {
+                this._allowRedirectDowngrade = requestOptions.allowRedirectDowngrade;
+            }
+            if (requestOptions.maxRedirects != null) {
+                this._maxRedirects = Math.max(requestOptions.maxRedirects, 0);
+            }
+            if (requestOptions.keepAlive != null) {
+                this._keepAlive = requestOptions.keepAlive;
+            }
+            if (requestOptions.allowRetries != null) {
+                this._allowRetries = requestOptions.allowRetries;
+            }
+            if (requestOptions.maxRetries != null) {
+                this._maxRetries = requestOptions.maxRetries;
+            }
+        }
+    }
+    options(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('OPTIONS', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    get(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('GET', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    del(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('DELETE', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    post(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('POST', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    patch(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PATCH', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    put(requestUrl, data, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('PUT', requestUrl, data, additionalHeaders || {});
+        });
+    }
+    head(requestUrl, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request('HEAD', requestUrl, null, additionalHeaders || {});
+        });
+    }
+    sendStream(verb, requestUrl, stream, additionalHeaders) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return this.request(verb, requestUrl, stream, additionalHeaders);
+        });
+    }
+    /**
+     * Gets a typed object from an endpoint
+     * Be aware that not found returns a null.  Other errors (4xx, 5xx) reject the promise
+     */
+    getJson(requestUrl, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            const res = yield this.get(requestUrl, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    postJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.post(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    putJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.put(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    patchJson(requestUrl, obj, additionalHeaders = {}) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const data = JSON.stringify(obj, null, 2);
+            additionalHeaders[Headers.Accept] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.Accept, MediaTypes.ApplicationJson);
+            additionalHeaders[Headers.ContentType] = this._getExistingOrDefaultHeader(additionalHeaders, Headers.ContentType, MediaTypes.ApplicationJson);
+            const res = yield this.patch(requestUrl, data, additionalHeaders);
+            return this._processResponse(res, this.requestOptions);
+        });
+    }
+    /**
+     * Makes a raw http request.
+     * All other methods such as get, post, patch, and request ultimately call this.
+     * Prefer get, del, post and patch
+     */
+    request(verb, requestUrl, data, headers) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (this._disposed) {
+                throw new Error('Client has already been disposed.');
+            }
+            const parsedUrl = new URL(requestUrl);
+            let info = this._prepareRequest(verb, parsedUrl, headers);
+            // Only perform retries on reads since writes may not be idempotent.
+            const maxTries = this._allowRetries && RetryableHttpVerbs.includes(verb)
+                ? this._maxRetries + 1
+                : 1;
+            let numTries = 0;
+            let response;
+            do {
+                response = yield this.requestRaw(info, data);
+                // Check if it's an authentication challenge
+                if (response &&
+                    response.message &&
+                    response.message.statusCode === HttpCodes.Unauthorized) {
+                    let authenticationHandler;
+                    for (const handler of this.handlers) {
+                        if (handler.canHandleAuthentication(response)) {
+                            authenticationHandler = handler;
+                            break;
+                        }
+                    }
+                    if (authenticationHandler) {
+                        return authenticationHandler.handleAuthentication(this, info, data);
+                    }
+                    else {
+                        // We have received an unauthorized response but have no handlers to handle it.
+                        // Let the response return to the caller.
+                        return response;
+                    }
+                }
+                let redirectsRemaining = this._maxRedirects;
+                while (response.message.statusCode &&
+                    HttpRedirectCodes.includes(response.message.statusCode) &&
+                    this._allowRedirects &&
+                    redirectsRemaining > 0) {
+                    const redirectUrl = response.message.headers['location'];
+                    if (!redirectUrl) {
+                        // if there's no location to redirect to, we won't
+                        break;
+                    }
+                    const parsedRedirectUrl = new URL(redirectUrl);
+                    if (parsedUrl.protocol === 'https:' &&
+                        parsedUrl.protocol !== parsedRedirectUrl.protocol &&
+                        !this._allowRedirectDowngrade) {
+                        throw new Error('Redirect from HTTPS to HTTP protocol. This downgrade is not allowed for security reasons. If you want to allow this behavior, set the allowRedirectDowngrade option to true.');
+                    }
+                    // we need to finish reading the response before reassigning response
+                    // which will leak the open socket.
+                    yield response.readBody();
+                    // strip authorization header if redirected to a different hostname
+                    if (parsedRedirectUrl.hostname !== parsedUrl.hostname) {
+                        for (const header in headers) {
+                            // header names are case insensitive
+                            if (header.toLowerCase() === 'authorization') {
+                                delete headers[header];
+                            }
+                        }
+                    }
+                    // let's make the request with the new redirectUrl
+                    info = this._prepareRequest(verb, parsedRedirectUrl, headers);
+                    response = yield this.requestRaw(info, data);
+                    redirectsRemaining--;
+                }
+                if (!response.message.statusCode ||
+                    !HttpResponseRetryCodes.includes(response.message.statusCode)) {
+                    // If not a retry code, return immediately instead of retrying
+                    return response;
+                }
+                numTries += 1;
+                if (numTries < maxTries) {
+                    yield response.readBody();
+                    yield this._performExponentialBackoff(numTries);
+                }
+            } while (numTries < maxTries);
+            return response;
+        });
+    }
+    /**
+     * Needs to be called if keepAlive is set to true in request options.
+     */
+    dispose() {
+        if (this._agent) {
+            this._agent.destroy();
+        }
+        this._disposed = true;
+    }
+    /**
+     * Raw request.
+     * @param info
+     * @param data
+     */
+    requestRaw(info, data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
+                function callbackForResult(err, res) {
+                    if (err) {
+                        reject(err);
+                    }
+                    else if (!res) {
+                        // If `err` is not passed, then `res` must be passed.
+                        reject(new Error('Unknown error'));
+                    }
+                    else {
+                        resolve(res);
+                    }
+                }
+                this.requestRawWithCallback(info, data, callbackForResult);
+            });
+        });
+    }
+    /**
+     * Raw request with callback.
+     * @param info
+     * @param data
+     * @param onResult
+     */
+    requestRawWithCallback(info, data, onResult) {
+        if (typeof data === 'string') {
+            if (!info.options.headers) {
+                info.options.headers = {};
+            }
+            info.options.headers['Content-Length'] = Buffer.byteLength(data, 'utf8');
+        }
+        let callbackCalled = false;
+        function handleResult(err, res) {
+            if (!callbackCalled) {
+                callbackCalled = true;
+                onResult(err, res);
+            }
+        }
+        const req = info.httpModule.request(info.options, (msg) => {
+            const res = new HttpClientResponse(msg);
+            handleResult(undefined, res);
+        });
+        let socket;
+        req.on('socket', sock => {
+            socket = sock;
+        });
+        // If we ever get disconnected, we want the socket to timeout eventually
+        req.setTimeout(this._socketTimeout || 3 * 60000, () => {
+            if (socket) {
+                socket.end();
+            }
+            handleResult(new Error(`Request timeout: ${info.options.path}`));
+        });
+        req.on('error', function (err) {
+            // err has statusCode property
+            // res should have headers
+            handleResult(err);
+        });
+        if (data && typeof data === 'string') {
+            req.write(data, 'utf8');
+        }
+        if (data && typeof data !== 'string') {
+            data.on('close', function () {
+                req.end();
+            });
+            data.pipe(req);
+        }
+        else {
+            req.end();
+        }
+    }
+    /**
+     * Gets an http agent. This function is useful when you need an http agent that handles
+     * routing through a proxy server - depending upon the url and proxy environment variables.
+     * @param serverUrl  The server URL where the request will be sent. For example, https://api.github.com
+     */
+    getAgent(serverUrl) {
+        const parsedUrl = new URL(serverUrl);
+        return this._getAgent(parsedUrl);
+    }
+    _prepareRequest(method, requestUrl, headers) {
+        const info = {};
+        info.parsedUrl = requestUrl;
+        const usingSsl = info.parsedUrl.protocol === 'https:';
+        info.httpModule = usingSsl ? https : http;
+        const defaultPort = usingSsl ? 443 : 80;
+        info.options = {};
+        info.options.host = info.parsedUrl.hostname;
+        info.options.port = info.parsedUrl.port
+            ? parseInt(info.parsedUrl.port)
+            : defaultPort;
+        info.options.path =
+            (info.parsedUrl.pathname || '') + (info.parsedUrl.search || '');
+        info.options.method = method;
+        info.options.headers = this._mergeHeaders(headers);
+        if (this.userAgent != null) {
+            info.options.headers['user-agent'] = this.userAgent;
+        }
+        info.options.agent = this._getAgent(info.parsedUrl);
+        // gives handlers an opportunity to participate
+        if (this.handlers) {
+            for (const handler of this.handlers) {
+                handler.prepareRequest(info.options);
+            }
+        }
+        return info;
+    }
+    _mergeHeaders(headers) {
+        if (this.requestOptions && this.requestOptions.headers) {
+            return Object.assign({}, lowercaseKeys(this.requestOptions.headers), lowercaseKeys(headers || {}));
+        }
+        return lowercaseKeys(headers || {});
+    }
+    _getExistingOrDefaultHeader(additionalHeaders, header, _default) {
+        let clientHeader;
+        if (this.requestOptions && this.requestOptions.headers) {
+            clientHeader = lowercaseKeys(this.requestOptions.headers)[header];
+        }
+        return additionalHeaders[header] || clientHeader || _default;
+    }
+    _getAgent(parsedUrl) {
+        let agent;
+        const proxyUrl = pm.getProxyUrl(parsedUrl);
+        const useProxy = proxyUrl && proxyUrl.hostname;
+        if (this._keepAlive && useProxy) {
+            agent = this._proxyAgent;
+        }
+        if (this._keepAlive && !useProxy) {
+            agent = this._agent;
+        }
+        // if agent is already assigned use that agent.
+        if (agent) {
+            return agent;
+        }
+        const usingSsl = parsedUrl.protocol === 'https:';
+        let maxSockets = 100;
+        if (this.requestOptions) {
+            maxSockets = this.requestOptions.maxSockets || http.globalAgent.maxSockets;
+        }
+        // This is `useProxy` again, but we need to check `proxyURl` directly for TypeScripts's flow analysis.
+        if (proxyUrl && proxyUrl.hostname) {
+            const agentOptions = {
+                maxSockets,
+                keepAlive: this._keepAlive,
+                proxy: Object.assign(Object.assign({}, ((proxyUrl.username || proxyUrl.password) && {
+                    proxyAuth: `${proxyUrl.username}:${proxyUrl.password}`
+                })), { host: proxyUrl.hostname, port: proxyUrl.port })
+            };
+            let tunnelAgent;
+            const overHttps = proxyUrl.protocol === 'https:';
+            if (usingSsl) {
+                tunnelAgent = overHttps ? tunnel.httpsOverHttps : tunnel.httpsOverHttp;
+            }
+            else {
+                tunnelAgent = overHttps ? tunnel.httpOverHttps : tunnel.httpOverHttp;
+            }
+            agent = tunnelAgent(agentOptions);
+            this._proxyAgent = agent;
+        }
+        // if reusing agent across request and tunneling agent isn't assigned create a new agent
+        if (this._keepAlive && !agent) {
+            const options = { keepAlive: this._keepAlive, maxSockets };
+            agent = usingSsl ? new https.Agent(options) : new http.Agent(options);
+            this._agent = agent;
+        }
+        // if not using private agent and tunnel agent isn't setup then use global agent
+        if (!agent) {
+            agent = usingSsl ? https.globalAgent : http.globalAgent;
+        }
+        if (usingSsl && this._ignoreSslError) {
+            // we don't want to set NODE_TLS_REJECT_UNAUTHORIZED=0 since that will affect request for entire process
+            // http.RequestOptions doesn't expose a way to modify RequestOptions.agent.options
+            // we have to cast it to any and change it directly
+            agent.options = Object.assign(agent.options || {}, {
+                rejectUnauthorized: false
+            });
+        }
+        return agent;
+    }
+    _performExponentialBackoff(retryNumber) {
+        return __awaiter(this, void 0, void 0, function* () {
+            retryNumber = Math.min(ExponentialBackoffCeiling, retryNumber);
+            const ms = ExponentialBackoffTimeSlice * Math.pow(2, retryNumber);
+            return new Promise(resolve => setTimeout(() => resolve(), ms));
+        });
+    }
+    _processResponse(res, options) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                const statusCode = res.message.statusCode || 0;
+                const response = {
+                    statusCode,
+                    result: null,
+                    headers: {}
+                };
+                // not found leads to null obj returned
+                if (statusCode === HttpCodes.NotFound) {
+                    resolve(response);
+                }
+                // get the result from the body
+                function dateTimeDeserializer(key, value) {
+                    if (typeof value === 'string') {
+                        const a = new Date(value);
+                        if (!isNaN(a.valueOf())) {
+                            return a;
+                        }
+                    }
+                    return value;
+                }
+                let obj;
+                let contents;
+                try {
+                    contents = yield res.readBody();
+                    if (contents && contents.length > 0) {
+                        if (options && options.deserializeDates) {
+                            obj = JSON.parse(contents, dateTimeDeserializer);
+                        }
+                        else {
+                            obj = JSON.parse(contents);
+                        }
+                        response.result = obj;
+                    }
+                    response.headers = res.message.headers;
+                }
+                catch (err) {
+                    // Invalid resource (contents not json);  leaving result obj null
+                }
+                // note that 3xx redirects are handled by the http layer.
+                if (statusCode > 299) {
+                    let msg;
+                    // if exception/error in body, attempt to get better error
+                    if (obj && obj.message) {
+                        msg = obj.message;
+                    }
+                    else if (contents && contents.length > 0) {
+                        // it may be the case that the exception is in the body message as string
+                        msg = contents;
+                    }
+                    else {
+                        msg = `Failed request: (${statusCode})`;
+                    }
+                    const err = new HttpClientError(msg, statusCode);
+                    err.result = response.result;
+                    reject(err);
+                }
+                else {
+                    resolve(response);
+                }
+            }));
+        });
+    }
+}
+exports.HttpClient = HttpClient;
+const lowercaseKeys = (obj) => Object.keys(obj).reduce((c, k) => ((c[k.toLowerCase()] = obj[k]), c), {});
+//# sourceMappingURL=index.js.map
+
+/***/ }),
+
+/***/ 3186:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.checkBypass = exports.getProxyUrl = void 0;
+function getProxyUrl(reqUrl) {
+    const usingSsl = reqUrl.protocol === 'https:';
+    if (checkBypass(reqUrl)) {
+        return undefined;
+    }
+    const proxyVar = (() => {
+        if (usingSsl) {
+            return process.env['https_proxy'] || process.env['HTTPS_PROXY'];
+        }
+        else {
+            return process.env['http_proxy'] || process.env['HTTP_PROXY'];
+        }
+    })();
+    if (proxyVar) {
+        return new URL(proxyVar);
+    }
+    else {
+        return undefined;
+    }
+}
+exports.getProxyUrl = getProxyUrl;
+function checkBypass(reqUrl) {
+    if (!reqUrl.hostname) {
+        return false;
+    }
+    const noProxy = process.env['no_proxy'] || process.env['NO_PROXY'] || '';
+    if (!noProxy) {
+        return false;
+    }
+    // Determine the request port
+    let reqPort;
+    if (reqUrl.port) {
+        reqPort = Number(reqUrl.port);
+    }
+    else if (reqUrl.protocol === 'http:') {
+        reqPort = 80;
+    }
+    else if (reqUrl.protocol === 'https:') {
+        reqPort = 443;
+    }
+    // Format the request hostname and hostname with port
+    const upperReqHosts = [reqUrl.hostname.toUpperCase()];
+    if (typeof reqPort === 'number') {
+        upperReqHosts.push(`${upperReqHosts[0]}:${reqPort}`);
+    }
+    // Compare request host against noproxy
+    for (const upperNoProxyItem of noProxy
+        .split(',')
+        .map(x => x.trim().toUpperCase())
+        .filter(x => x)) {
+        if (upperReqHosts.some(x => x === upperNoProxyItem)) {
+            return true;
+        }
+    }
+    return false;
+}
+exports.checkBypass = checkBypass;
+//# sourceMappingURL=proxy.js.map
 
 /***/ }),
 
@@ -6878,72 +9106,6 @@ class SearchState {
 }
 exports.SearchState = SearchState;
 //# sourceMappingURL=internal-search-state.js.map
-
-/***/ }),
-
-/***/ 3702:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-class BasicCredentialHandler {
-    constructor(username, password) {
-        this.username = username;
-        this.password = password;
-    }
-    prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' +
-                Buffer.from(this.username + ':' + this.password).toString('base64');
-    }
-    // This handler cannot handle 401
-    canHandleAuthentication(response) {
-        return false;
-    }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
-    }
-}
-exports.BasicCredentialHandler = BasicCredentialHandler;
-class BearerCredentialHandler {
-    constructor(token) {
-        this.token = token;
-    }
-    // currently implements pre-authorization
-    // TODO: support preAuth = false where it hooks on 401
-    prepareRequest(options) {
-        options.headers['Authorization'] = 'Bearer ' + this.token;
-    }
-    // This handler cannot handle 401
-    canHandleAuthentication(response) {
-        return false;
-    }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
-    }
-}
-exports.BearerCredentialHandler = BearerCredentialHandler;
-class PersonalAccessTokenCredentialHandler {
-    constructor(token) {
-        this.token = token;
-    }
-    // currently implements pre-authorization
-    // TODO: support preAuth = false where it hooks on 401
-    prepareRequest(options) {
-        options.headers['Authorization'] =
-            'Basic ' + Buffer.from('PAT:' + this.token).toString('base64');
-    }
-    // This handler cannot handle 401
-    canHandleAuthentication(response) {
-        return false;
-    }
-    handleAuthentication(httpClient, requestInfo, objs) {
-        return null;
-    }
-}
-exports.PersonalAccessTokenCredentialHandler = PersonalAccessTokenCredentialHandler;
-
 
 /***/ }),
 
@@ -10674,19 +12836,18 @@ module.exports = v4;
 /***/ }),
 
 /***/ 2557:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-var tslib = __nccwpck_require__(9268);
-
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-var listenersMap = new WeakMap();
-var abortedMap = new WeakMap();
+/// <reference path="../shims-public.d.ts" />
+const listenersMap = new WeakMap();
+const abortedMap = new WeakMap();
 /**
  * An aborter instance implements AbortSignal interface, can abort HTTP requests.
  *
@@ -10700,8 +12861,8 @@ var abortedMap = new WeakMap();
  * await doAsyncWork(AbortSignal.none);
  * ```
  */
-var AbortSignal = /** @class */ (function () {
-    function AbortSignal() {
+class AbortSignal {
+    constructor() {
         /**
          * onabort event listener.
          */
@@ -10709,74 +12870,65 @@ var AbortSignal = /** @class */ (function () {
         listenersMap.set(this, []);
         abortedMap.set(this, false);
     }
-    Object.defineProperty(AbortSignal.prototype, "aborted", {
-        /**
-         * Status of whether aborted or not.
-         *
-         * @readonly
-         */
-        get: function () {
-            if (!abortedMap.has(this)) {
-                throw new TypeError("Expected `this` to be an instance of AbortSignal.");
-            }
-            return abortedMap.get(this);
-        },
-        enumerable: false,
-        configurable: true
-    });
-    Object.defineProperty(AbortSignal, "none", {
-        /**
-         * Creates a new AbortSignal instance that will never be aborted.
-         *
-         * @readonly
-         */
-        get: function () {
-            return new AbortSignal();
-        },
-        enumerable: false,
-        configurable: true
-    });
+    /**
+     * Status of whether aborted or not.
+     *
+     * @readonly
+     */
+    get aborted() {
+        if (!abortedMap.has(this)) {
+            throw new TypeError("Expected `this` to be an instance of AbortSignal.");
+        }
+        return abortedMap.get(this);
+    }
+    /**
+     * Creates a new AbortSignal instance that will never be aborted.
+     *
+     * @readonly
+     */
+    static get none() {
+        return new AbortSignal();
+    }
     /**
      * Added new "abort" event listener, only support "abort" event.
      *
      * @param _type - Only support "abort" event
      * @param listener - The listener to be added
      */
-    AbortSignal.prototype.addEventListener = function (
+    addEventListener(
     // tslint:disable-next-line:variable-name
     _type, listener) {
         if (!listenersMap.has(this)) {
             throw new TypeError("Expected `this` to be an instance of AbortSignal.");
         }
-        var listeners = listenersMap.get(this);
+        const listeners = listenersMap.get(this);
         listeners.push(listener);
-    };
+    }
     /**
      * Remove "abort" event listener, only support "abort" event.
      *
      * @param _type - Only support "abort" event
      * @param listener - The listener to be removed
      */
-    AbortSignal.prototype.removeEventListener = function (
+    removeEventListener(
     // tslint:disable-next-line:variable-name
     _type, listener) {
         if (!listenersMap.has(this)) {
             throw new TypeError("Expected `this` to be an instance of AbortSignal.");
         }
-        var listeners = listenersMap.get(this);
-        var index = listeners.indexOf(listener);
+        const listeners = listenersMap.get(this);
+        const index = listeners.indexOf(listener);
         if (index > -1) {
             listeners.splice(index, 1);
         }
-    };
+    }
     /**
      * Dispatches a synthetic event to the AbortSignal.
      */
-    AbortSignal.prototype.dispatchEvent = function (_event) {
+    dispatchEvent(_event) {
         throw new Error("This is a stub dispatchEvent implementation that should not be used.  It only exists for type-checking purposes.");
-    };
-    return AbortSignal;
-}());
+    }
+}
 /**
  * Helper to trigger an abort event immediately, the onabort and all abort event listeners will be triggered.
  * Will try to trigger abort event for all linked AbortSignal nodes.
@@ -10794,12 +12946,12 @@ function abortSignal(signal) {
     if (signal.onabort) {
         signal.onabort.call(signal);
     }
-    var listeners = listenersMap.get(signal);
+    const listeners = listenersMap.get(signal);
     if (listeners) {
         // Create a copy of listeners so mutations to the array
         // (e.g. via removeListener calls) don't affect the listeners
         // we invoke.
-        listeners.slice().forEach(function (listener) {
+        listeners.slice().forEach((listener) => {
             listener.call(signal, { type: "abort" });
         });
     }
@@ -10825,15 +12977,12 @@ function abortSignal(signal) {
  * }
  * ```
  */
-var AbortError = /** @class */ (function (_super) {
-    tslib.__extends(AbortError, _super);
-    function AbortError(message) {
-        var _this = _super.call(this, message) || this;
-        _this.name = "AbortError";
-        return _this;
+class AbortError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "AbortError";
     }
-    return AbortError;
-}(Error));
+}
 /**
  * An AbortController provides an AbortSignal and the associated controls to signal
  * that an asynchronous operation should be aborted.
@@ -10868,10 +13017,9 @@ var AbortError = /** @class */ (function (_super) {
  * await doAsyncWork(aborter.withTimeout(25 * 1000));
  * ```
  */
-var AbortController = /** @class */ (function () {
+class AbortController {
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-    function AbortController(parentSignals) {
-        var _this = this;
+    constructor(parentSignals) {
         this._signal = new AbortSignal();
         if (!parentSignals) {
             return;
@@ -10881,8 +13029,7 @@ var AbortController = /** @class */ (function () {
             // eslint-disable-next-line prefer-rest-params
             parentSignals = arguments;
         }
-        for (var _i = 0, parentSignals_1 = parentSignals; _i < parentSignals_1.length; _i++) {
-            var parentSignal = parentSignals_1[_i];
+        for (const parentSignal of parentSignals) {
             // if the parent signal has already had abort() called,
             // then call abort on this signal as well.
             if (parentSignal.aborted) {
@@ -10890,391 +13037,48 @@ var AbortController = /** @class */ (function () {
             }
             else {
                 // when the parent signal aborts, this signal should as well.
-                parentSignal.addEventListener("abort", function () {
-                    _this.abort();
+                parentSignal.addEventListener("abort", () => {
+                    this.abort();
                 });
             }
         }
     }
-    Object.defineProperty(AbortController.prototype, "signal", {
-        /**
-         * The AbortSignal associated with this controller that will signal aborted
-         * when the abort method is called on this controller.
-         *
-         * @readonly
-         */
-        get: function () {
-            return this._signal;
-        },
-        enumerable: false,
-        configurable: true
-    });
+    /**
+     * The AbortSignal associated with this controller that will signal aborted
+     * when the abort method is called on this controller.
+     *
+     * @readonly
+     */
+    get signal() {
+        return this._signal;
+    }
     /**
      * Signal that any operations passed this controller's associated abort signal
      * to cancel any remaining work and throw an `AbortError`.
      */
-    AbortController.prototype.abort = function () {
+    abort() {
         abortSignal(this._signal);
-    };
+    }
     /**
      * Creates a new AbortSignal instance that will abort after the provided ms.
      * @param ms - Elapsed time in milliseconds to trigger an abort.
      */
-    AbortController.timeout = function (ms) {
-        var signal = new AbortSignal();
-        var timer = setTimeout(abortSignal, ms, signal);
+    static timeout(ms) {
+        const signal = new AbortSignal();
+        const timer = setTimeout(abortSignal, ms, signal);
         // Prevent the active Timer from keeping the Node.js event loop active.
         if (typeof timer.unref === "function") {
             timer.unref();
         }
         return signal;
-    };
-    return AbortController;
-}());
+    }
+}
 
 exports.AbortController = AbortController;
 exports.AbortError = AbortError;
 exports.AbortSignal = AbortSignal;
 //# sourceMappingURL=index.js.map
 
-
-/***/ }),
-
-/***/ 9268:
-/***/ ((module) => {
-
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global global, define, System, Reflect, Promise */
-var __extends;
-var __assign;
-var __rest;
-var __decorate;
-var __param;
-var __metadata;
-var __awaiter;
-var __generator;
-var __exportStar;
-var __values;
-var __read;
-var __spread;
-var __spreadArrays;
-var __spreadArray;
-var __await;
-var __asyncGenerator;
-var __asyncDelegator;
-var __asyncValues;
-var __makeTemplateObject;
-var __importStar;
-var __importDefault;
-var __classPrivateFieldGet;
-var __classPrivateFieldSet;
-var __classPrivateFieldIn;
-var __createBinding;
-(function (factory) {
-    var root = typeof global === "object" ? global : typeof self === "object" ? self : typeof this === "object" ? this : {};
-    if (typeof define === "function" && define.amd) {
-        define("tslib", ["exports"], function (exports) { factory(createExporter(root, createExporter(exports))); });
-    }
-    else if ( true && typeof module.exports === "object") {
-        factory(createExporter(root, createExporter(module.exports)));
-    }
-    else {
-        factory(createExporter(root));
-    }
-    function createExporter(exports, previous) {
-        if (exports !== root) {
-            if (typeof Object.create === "function") {
-                Object.defineProperty(exports, "__esModule", { value: true });
-            }
-            else {
-                exports.__esModule = true;
-            }
-        }
-        return function (id, v) { return exports[id] = previous ? previous(id, v) : v; };
-    }
-})
-(function (exporter) {
-    var extendStatics = Object.setPrototypeOf ||
-        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-        function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-
-    __extends = function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-
-    __assign = Object.assign || function (t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
-        }
-        return t;
-    };
-
-    __rest = function (s, e) {
-        var t = {};
-        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
-            t[p] = s[p];
-        if (s != null && typeof Object.getOwnPropertySymbols === "function")
-            for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
-                if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
-                    t[p[i]] = s[p[i]];
-            }
-        return t;
-    };
-
-    __decorate = function (decorators, target, key, desc) {
-        var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-        if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-        else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-        return c > 3 && r && Object.defineProperty(target, key, r), r;
-    };
-
-    __param = function (paramIndex, decorator) {
-        return function (target, key) { decorator(target, key, paramIndex); }
-    };
-
-    __metadata = function (metadataKey, metadataValue) {
-        if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(metadataKey, metadataValue);
-    };
-
-    __awaiter = function (thisArg, _arguments, P, generator) {
-        function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-        return new (P || (P = Promise))(function (resolve, reject) {
-            function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-            function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-            function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-            step((generator = generator.apply(thisArg, _arguments || [])).next());
-        });
-    };
-
-    __generator = function (thisArg, body) {
-        var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-        return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-        function verb(n) { return function (v) { return step([n, v]); }; }
-        function step(op) {
-            if (f) throw new TypeError("Generator is already executing.");
-            while (_) try {
-                if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-                if (y = 0, t) op = [op[0] & 2, t.value];
-                switch (op[0]) {
-                    case 0: case 1: t = op; break;
-                    case 4: _.label++; return { value: op[1], done: false };
-                    case 5: _.label++; y = op[1]; op = [0]; continue;
-                    case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                    default:
-                        if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                        if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                        if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                        if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                        if (t[2]) _.ops.pop();
-                        _.trys.pop(); continue;
-                }
-                op = body.call(thisArg, _);
-            } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-            if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-        }
-    };
-
-    __exportStar = function(m, o) {
-        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(o, p)) __createBinding(o, m, p);
-    };
-
-    __createBinding = Object.create ? (function(o, m, k, k2) {
-        if (k2 === undefined) k2 = k;
-        var desc = Object.getOwnPropertyDescriptor(m, k);
-        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-            desc = { enumerable: true, get: function() { return m[k]; } };
-        }
-        Object.defineProperty(o, k2, desc);
-    }) : (function(o, m, k, k2) {
-        if (k2 === undefined) k2 = k;
-        o[k2] = m[k];
-    });
-
-    __values = function (o) {
-        var s = typeof Symbol === "function" && Symbol.iterator, m = s && o[s], i = 0;
-        if (m) return m.call(o);
-        if (o && typeof o.length === "number") return {
-            next: function () {
-                if (o && i >= o.length) o = void 0;
-                return { value: o && o[i++], done: !o };
-            }
-        };
-        throw new TypeError(s ? "Object is not iterable." : "Symbol.iterator is not defined.");
-    };
-
-    __read = function (o, n) {
-        var m = typeof Symbol === "function" && o[Symbol.iterator];
-        if (!m) return o;
-        var i = m.call(o), r, ar = [], e;
-        try {
-            while ((n === void 0 || n-- > 0) && !(r = i.next()).done) ar.push(r.value);
-        }
-        catch (error) { e = { error: error }; }
-        finally {
-            try {
-                if (r && !r.done && (m = i["return"])) m.call(i);
-            }
-            finally { if (e) throw e.error; }
-        }
-        return ar;
-    };
-
-    /** @deprecated */
-    __spread = function () {
-        for (var ar = [], i = 0; i < arguments.length; i++)
-            ar = ar.concat(__read(arguments[i]));
-        return ar;
-    };
-
-    /** @deprecated */
-    __spreadArrays = function () {
-        for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
-        for (var r = Array(s), k = 0, i = 0; i < il; i++)
-            for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
-                r[k] = a[j];
-        return r;
-    };
-
-    __spreadArray = function (to, from, pack) {
-        if (pack || arguments.length === 2) for (var i = 0, l = from.length, ar; i < l; i++) {
-            if (ar || !(i in from)) {
-                if (!ar) ar = Array.prototype.slice.call(from, 0, i);
-                ar[i] = from[i];
-            }
-        }
-        return to.concat(ar || Array.prototype.slice.call(from));
-    };
-
-    __await = function (v) {
-        return this instanceof __await ? (this.v = v, this) : new __await(v);
-    };
-
-    __asyncGenerator = function (thisArg, _arguments, generator) {
-        if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-        var g = generator.apply(thisArg, _arguments || []), i, q = [];
-        return i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i;
-        function verb(n) { if (g[n]) i[n] = function (v) { return new Promise(function (a, b) { q.push([n, v, a, b]) > 1 || resume(n, v); }); }; }
-        function resume(n, v) { try { step(g[n](v)); } catch (e) { settle(q[0][3], e); } }
-        function step(r) { r.value instanceof __await ? Promise.resolve(r.value.v).then(fulfill, reject) : settle(q[0][2], r);  }
-        function fulfill(value) { resume("next", value); }
-        function reject(value) { resume("throw", value); }
-        function settle(f, v) { if (f(v), q.shift(), q.length) resume(q[0][0], q[0][1]); }
-    };
-
-    __asyncDelegator = function (o) {
-        var i, p;
-        return i = {}, verb("next"), verb("throw", function (e) { throw e; }), verb("return"), i[Symbol.iterator] = function () { return this; }, i;
-        function verb(n, f) { i[n] = o[n] ? function (v) { return (p = !p) ? { value: __await(o[n](v)), done: n === "return" } : f ? f(v) : v; } : f; }
-    };
-
-    __asyncValues = function (o) {
-        if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
-        var m = o[Symbol.asyncIterator], i;
-        return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
-        function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
-        function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
-    };
-
-    __makeTemplateObject = function (cooked, raw) {
-        if (Object.defineProperty) { Object.defineProperty(cooked, "raw", { value: raw }); } else { cooked.raw = raw; }
-        return cooked;
-    };
-
-    var __setModuleDefault = Object.create ? (function(o, v) {
-        Object.defineProperty(o, "default", { enumerable: true, value: v });
-    }) : function(o, v) {
-        o["default"] = v;
-    };
-
-    __importStar = function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-
-    __importDefault = function (mod) {
-        return (mod && mod.__esModule) ? mod : { "default": mod };
-    };
-
-    __classPrivateFieldGet = function (receiver, state, kind, f) {
-        if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
-        if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
-        return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
-    };
-
-    __classPrivateFieldSet = function (receiver, state, value, kind, f) {
-        if (kind === "m") throw new TypeError("Private method is not writable");
-        if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
-        if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
-        return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
-    };
-
-    __classPrivateFieldIn = function (state, receiver) {
-        if (receiver === null || (typeof receiver !== "object" && typeof receiver !== "function")) throw new TypeError("Cannot use 'in' operator on non-object");
-        return typeof state === "function" ? receiver === state : state.has(receiver);
-    };
-
-    exporter("__extends", __extends);
-    exporter("__assign", __assign);
-    exporter("__rest", __rest);
-    exporter("__decorate", __decorate);
-    exporter("__param", __param);
-    exporter("__metadata", __metadata);
-    exporter("__awaiter", __awaiter);
-    exporter("__generator", __generator);
-    exporter("__exportStar", __exportStar);
-    exporter("__createBinding", __createBinding);
-    exporter("__values", __values);
-    exporter("__read", __read);
-    exporter("__spread", __spread);
-    exporter("__spreadArrays", __spreadArrays);
-    exporter("__spreadArray", __spreadArray);
-    exporter("__await", __await);
-    exporter("__asyncGenerator", __asyncGenerator);
-    exporter("__asyncDelegator", __asyncDelegator);
-    exporter("__asyncValues", __asyncValues);
-    exporter("__makeTemplateObject", __makeTemplateObject);
-    exporter("__importStar", __importStar);
-    exporter("__importDefault", __importDefault);
-    exporter("__classPrivateFieldGet", __classPrivateFieldGet);
-    exporter("__classPrivateFieldSet", __classPrivateFieldSet);
-    exporter("__classPrivateFieldIn", __classPrivateFieldIn);
-});
-
-
-/***/ }),
-
-/***/ 2356:
-/***/ (() => {
-
-"use strict";
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-if (typeof Symbol === undefined || !Symbol.asyncIterator) {
-    Symbol.asyncIterator = Symbol.for("Symbol.asyncIterator");
-}
-//# sourceMappingURL=index.js.map
 
 /***/ }),
 
@@ -11525,8 +13329,6 @@ var stream = __nccwpck_require__(2413);
 var FormData = __nccwpck_require__(6279);
 var node_fetch = __nccwpck_require__(467);
 var coreTracing = __nccwpck_require__(4175);
-var url = __nccwpck_require__(8835);
-__nccwpck_require__(2356);
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
@@ -11744,7 +13546,7 @@ const Constants = {
     /**
      * The core-http version
      */
-    coreHttpVersion: "2.2.4",
+    coreHttpVersion: "2.2.5",
     /**
      * Specifies HTTP.
      */
@@ -13871,6 +15673,7 @@ const defaultAllowedHeaderNames = [
     "Server",
     "Transfer-Encoding",
     "User-Agent",
+    "WWW-Authenticate",
 ];
 const defaultAllowedQueryParameters = ["api-version"];
 class Sanitizer {
@@ -14333,7 +16136,6 @@ exports.HttpPipelineLogLevel = void 0;
  * @param opts - OperationOptions object to convert to RequestOptionsBase
  */
 function operationOptionsToRequestOptionsBase(opts) {
-    var _a;
     const { requestOptions, tracingOptions } = opts, additionalOptions = tslib.__rest(opts, ["requestOptions", "tracingOptions"]);
     let result = additionalOptions;
     if (requestOptions) {
@@ -14342,7 +16144,7 @@ function operationOptionsToRequestOptionsBase(opts) {
     if (tracingOptions) {
         result.tracingContext = tracingOptions.tracingContext;
         // By passing spanOptions if they exist at runtime, we're backwards compatible with @azure/core-tracing@preview.13 and earlier.
-        result.spanOptions = (_a = tracingOptions) === null || _a === void 0 ? void 0 : _a.spanOptions;
+        result.spanOptions = tracingOptions === null || tracingOptions === void 0 ? void 0 : tracingOptions.spanOptions;
     }
     return result;
 }
@@ -16753,8 +18555,8 @@ function getCredentialScopes(options, baseUri) {
     if (options === null || options === void 0 ? void 0 : options.credentialScopes) {
         const scopes = options.credentialScopes;
         return Array.isArray(scopes)
-            ? scopes.map((scope) => new url.URL(scope).toString())
-            : new url.URL(scopes).toString();
+            ? scopes.map((scope) => new URL(scope).toString())
+            : new URL(scopes).toString();
     }
     if (baseUri) {
         return `${baseUri}/.default`;
@@ -20826,7 +22628,6 @@ exports.PollerStoppedError = PollerStoppedError;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-__nccwpck_require__(2356);
 var tslib = __nccwpck_require__(6429);
 
 // Copyright (c) Microsoft Corporation.
@@ -20848,14 +22649,18 @@ function getPagedAsyncIterator(pagedResult) {
             return this;
         },
         byPage: (_a = pagedResult === null || pagedResult === void 0 ? void 0 : pagedResult.byPage) !== null && _a !== void 0 ? _a : ((settings) => {
-            return getPageAsyncIterator(pagedResult, settings === null || settings === void 0 ? void 0 : settings.maxPageSize);
+            const { continuationToken, maxPageSize } = settings !== null && settings !== void 0 ? settings : {};
+            return getPageAsyncIterator(pagedResult, {
+                pageLink: continuationToken,
+                maxPageSize,
+            });
         }),
     };
 }
-function getItemAsyncIterator(pagedResult, maxPageSize) {
+function getItemAsyncIterator(pagedResult) {
     return tslib.__asyncGenerator(this, arguments, function* getItemAsyncIterator_1() {
         var e_1, _a;
-        const pages = getPageAsyncIterator(pagedResult, maxPageSize);
+        const pages = getPageAsyncIterator(pagedResult);
         const firstVal = yield tslib.__await(pages.next());
         // if the result does not have an array shape, i.e. TPage = TElement, then we return it as is
         if (!Array.isArray(firstVal.value)) {
@@ -20883,9 +22688,10 @@ function getItemAsyncIterator(pagedResult, maxPageSize) {
         }
     });
 }
-function getPageAsyncIterator(pagedResult, maxPageSize) {
+function getPageAsyncIterator(pagedResult, options = {}) {
     return tslib.__asyncGenerator(this, arguments, function* getPageAsyncIterator_1() {
-        let response = yield tslib.__await(pagedResult.getPage(pagedResult.firstPageLink, maxPageSize));
+        const { pageLink, maxPageSize } = options;
+        let response = yield tslib.__await(pagedResult.getPage(pageLink !== null && pageLink !== void 0 ? pageLink : pagedResult.firstPageLink, maxPageSize));
         yield yield tslib.__await(response.page);
         while (response.nextPageLink) {
             response = yield tslib.__await(pagedResult.getPage(response.nextPageLink, maxPageSize));
@@ -23367,6 +25173,13 @@ const PageList = {
                             className: "ClearRange"
                         }
                     }
+                }
+            },
+            continuationToken: {
+                serializedName: "NextMarker",
+                xmlName: "NextMarker",
+                type: {
+                    name: "String"
                 }
             }
         }
@@ -30165,7 +31978,7 @@ const timeoutInSeconds = {
 const version = {
     parameterPath: "version",
     mapper: {
-        defaultValue: "2021-04-10",
+        defaultValue: "2021-06-08",
         isConstant: true,
         serializedName: "x-ms-version",
         type: {
@@ -31177,6 +32990,17 @@ const copySourceAuthorization = {
         xmlName: "x-ms-copy-source-authorization",
         type: {
             name: "String"
+        }
+    }
+};
+const copySourceTags = {
+    parameterPath: ["options", "copySourceTags"],
+    mapper: {
+        serializedName: "x-ms-copy-source-tag-option",
+        xmlName: "x-ms-copy-source-tag-option",
+        type: {
+            name: "Enum",
+            allowedValues: ["REPLACE", "COPY"]
         }
     }
 };
@@ -33660,7 +35484,8 @@ const copyFromURLOperationSpec = {
         legalHold1,
         xMsRequiresSync,
         sourceContentMD5,
-        copySourceAuthorization
+        copySourceAuthorization,
+        copySourceTags
     ],
     isXML: true,
     serializer: xmlSerializer$3
@@ -34200,6 +36025,8 @@ const getPageRangesOperationSpec = {
     },
     queryParameters: [
         timeoutInSeconds,
+        marker,
+        maxPageSize,
         snapshot,
         comp20
     ],
@@ -34234,6 +36061,8 @@ const getPageRangesDiffOperationSpec = {
     },
     queryParameters: [
         timeoutInSeconds,
+        marker,
+        maxPageSize,
         snapshot,
         comp20,
         prevsnapshot
@@ -34803,6 +36632,7 @@ const putBlobFromUrlOperationSpec = {
         blobTagsString,
         sourceContentMD5,
         copySourceAuthorization,
+        copySourceTags,
         transactionalContentMD5,
         blobType2,
         copySourceBlobProperties
@@ -34976,8 +36806,8 @@ const logger = logger$1.createClientLogger("storage-blob");
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-const SDK_VERSION = "12.9.0";
-const SERVICE_VERSION = "2021-04-10";
+const SDK_VERSION = "12.10.0";
+const SERVICE_VERSION = "2021-06-08";
 const BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024; // 256MB
 const BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024; // 4000MB
 const BLOCK_BLOB_MAX_BLOCKS = 50000;
@@ -35170,6 +37000,7 @@ const StorageBlobLoggingAllowedQueryParameters = [
     "snapshot",
 ];
 const BlobUsesCustomerSpecifiedEncryptionMsg = "BlobUsesCustomerSpecifiedEncryption";
+const BlobDoesNotUseCustomerSpecifiedEncryption = "BlobDoesNotUseCustomerSpecifiedEncryption";
 
 // Copyright (c) Microsoft Corporation.
 /**
@@ -35833,82 +37664,207 @@ function ParseBlobName(blobNameInXML) {
         };
     }
 }
+function ParseBlobProperties(blobPropertiesInXML) {
+    const blobProperties = blobPropertiesInXML;
+    if (blobPropertiesInXML["Creation-Time"]) {
+        blobProperties.createdOn = new Date(blobPropertiesInXML["Creation-Time"]);
+        delete blobProperties["Creation-Time"];
+    }
+    if (blobPropertiesInXML["Last-Modified"]) {
+        blobProperties.lastModified = new Date(blobPropertiesInXML["Last-Modified"]);
+        delete blobProperties["Last-Modified"];
+    }
+    if (blobPropertiesInXML["Etag"]) {
+        blobProperties.etag = blobPropertiesInXML["Etag"];
+        delete blobProperties["Etag"];
+    }
+    if (blobPropertiesInXML["Content-Length"]) {
+        blobProperties.contentLength = parseFloat(blobPropertiesInXML["Content-Length"]);
+        delete blobProperties["Content-Length"];
+    }
+    if (blobPropertiesInXML["Content-Type"]) {
+        blobProperties.contentType = blobPropertiesInXML["Content-Type"];
+        delete blobProperties["Content-Type"];
+    }
+    if (blobPropertiesInXML["Content-Encoding"]) {
+        blobProperties.contentEncoding = blobPropertiesInXML["Content-Encoding"];
+        delete blobProperties["Content-Encoding"];
+    }
+    if (blobPropertiesInXML["Content-Language"]) {
+        blobProperties.contentLanguage = blobPropertiesInXML["Content-Language"];
+        delete blobProperties["Content-Language"];
+    }
+    if (blobPropertiesInXML["Content-MD5"]) {
+        blobProperties.contentMD5 = decodeBase64String(blobPropertiesInXML["Content-MD5"]);
+        delete blobProperties["Content-MD5"];
+    }
+    if (blobPropertiesInXML["Content-Disposition"]) {
+        blobProperties.contentDisposition = blobPropertiesInXML["Content-Disposition"];
+        delete blobProperties["Content-Disposition"];
+    }
+    if (blobPropertiesInXML["Cache-Control"]) {
+        blobProperties.cacheControl = blobPropertiesInXML["Cache-Control"];
+        delete blobProperties["Cache-Control"];
+    }
+    if (blobPropertiesInXML["x-ms-blob-sequence-number"]) {
+        blobProperties.blobSequenceNumber = parseFloat(blobPropertiesInXML["x-ms-blob-sequence-number"]);
+        delete blobProperties["x-ms-blob-sequence-number"];
+    }
+    if (blobPropertiesInXML["BlobType"]) {
+        blobProperties.blobType = blobPropertiesInXML["BlobType"];
+        delete blobProperties["BlobType"];
+    }
+    if (blobPropertiesInXML["LeaseStatus"]) {
+        blobProperties.leaseStatus = blobPropertiesInXML["LeaseStatus"];
+        delete blobProperties["LeaseStatus"];
+    }
+    if (blobPropertiesInXML["LeaseState"]) {
+        blobProperties.leaseState = blobPropertiesInXML["LeaseState"];
+        delete blobProperties["LeaseState"];
+    }
+    if (blobPropertiesInXML["LeaseDuration"]) {
+        blobProperties.leaseDuration = blobPropertiesInXML["LeaseDuration"];
+        delete blobProperties["LeaseDuration"];
+    }
+    if (blobPropertiesInXML["CopyId"]) {
+        blobProperties.copyId = blobPropertiesInXML["CopyId"];
+        delete blobProperties["CopyId"];
+    }
+    if (blobPropertiesInXML["CopyStatus"]) {
+        blobProperties.copyStatus = blobPropertiesInXML["CopyStatus"];
+        delete blobProperties["CopyStatus"];
+    }
+    if (blobPropertiesInXML["CopySource"]) {
+        blobProperties.copySource = blobPropertiesInXML["CopySource"];
+        delete blobProperties["CopySource"];
+    }
+    if (blobPropertiesInXML["CopyProgress"]) {
+        blobProperties.copyProgress = blobPropertiesInXML["CopyProgress"];
+        delete blobProperties["CopyProgress"];
+    }
+    if (blobPropertiesInXML["CopyCompletionTime"]) {
+        blobProperties.copyCompletedOn = new Date(blobPropertiesInXML["CopyCompletionTime"]);
+        delete blobProperties["CopyCompletionTime"];
+    }
+    if (blobPropertiesInXML["CopyStatusDescription"]) {
+        blobProperties.copyStatusDescription = blobPropertiesInXML["CopyStatusDescription"];
+        delete blobProperties["CopyStatusDescription"];
+    }
+    if (blobPropertiesInXML["ServerEncrypted"]) {
+        blobProperties.serverEncrypted = ParseBoolean(blobPropertiesInXML["ServerEncrypted"]);
+        delete blobProperties["ServerEncrypted"];
+    }
+    if (blobPropertiesInXML["IncrementalCopy"]) {
+        blobProperties.incrementalCopy = ParseBoolean(blobPropertiesInXML["IncrementalCopy"]);
+        delete blobProperties["IncrementalCopy"];
+    }
+    if (blobPropertiesInXML["DestinationSnapshot"]) {
+        blobProperties.destinationSnapshot = blobPropertiesInXML["DestinationSnapshot"];
+        delete blobProperties["DestinationSnapshot"];
+    }
+    if (blobPropertiesInXML["DeletedTime"]) {
+        blobProperties.deletedOn = new Date(blobPropertiesInXML["DeletedTime"]);
+        delete blobProperties["DeletedTime"];
+    }
+    if (blobPropertiesInXML["RemainingRetentionDays"]) {
+        blobProperties.remainingRetentionDays = parseFloat(blobPropertiesInXML["RemainingRetentionDays"]);
+        delete blobProperties["RemainingRetentionDays"];
+    }
+    if (blobPropertiesInXML["AccessTier"]) {
+        blobProperties.accessTier = blobPropertiesInXML["AccessTier"];
+        delete blobProperties["AccessTier"];
+    }
+    if (blobPropertiesInXML["AccessTierInferred"]) {
+        blobProperties.accessTierInferred = ParseBoolean(blobPropertiesInXML["AccessTierInferred"]);
+        delete blobProperties["AccessTierInferred"];
+    }
+    if (blobPropertiesInXML["ArchiveStatus"]) {
+        blobProperties.archiveStatus = blobPropertiesInXML["ArchiveStatus"];
+        delete blobProperties["ArchiveStatus"];
+    }
+    if (blobPropertiesInXML["CustomerProvidedKeySha256"]) {
+        blobProperties.customerProvidedKeySha256 = blobPropertiesInXML["CustomerProvidedKeySha256"];
+        delete blobProperties["CustomerProvidedKeySha256"];
+    }
+    if (blobPropertiesInXML["EncryptionScope"]) {
+        blobProperties.encryptionScope = blobPropertiesInXML["EncryptionScope"];
+        delete blobProperties["EncryptionScope"];
+    }
+    if (blobPropertiesInXML["AccessTierChangeTime"]) {
+        blobProperties.accessTierChangedOn = new Date(blobPropertiesInXML["AccessTierChangeTime"]);
+        delete blobProperties["AccessTierChangeTime"];
+    }
+    if (blobPropertiesInXML["TagCount"]) {
+        blobProperties.tagCount = parseFloat(blobPropertiesInXML["TagCount"]);
+        delete blobProperties["TagCount"];
+    }
+    if (blobPropertiesInXML["Expiry-Time"]) {
+        blobProperties.expiresOn = new Date(blobPropertiesInXML["Expiry-Time"]);
+        delete blobProperties["Expiry-Time"];
+    }
+    if (blobPropertiesInXML["Sealed"]) {
+        blobProperties.isSealed = ParseBoolean(blobPropertiesInXML["Sealed"]);
+        delete blobProperties["Sealed"];
+    }
+    if (blobPropertiesInXML["RehydratePriority"]) {
+        blobProperties.rehydratePriority = blobPropertiesInXML["RehydratePriority"];
+        delete blobProperties["RehydratePriority"];
+    }
+    if (blobPropertiesInXML["LastAccessTime"]) {
+        blobProperties.lastAccessedOn = new Date(blobPropertiesInXML["LastAccessTime"]);
+        delete blobProperties["LastAccessTime"];
+    }
+    if (blobPropertiesInXML["ImmutabilityPolicyUntilDate"]) {
+        blobProperties.immutabilityPolicyExpiresOn = new Date(blobPropertiesInXML["ImmutabilityPolicyUntilDate"]);
+        delete blobProperties["ImmutabilityPolicyUntilDate"];
+    }
+    if (blobPropertiesInXML["ImmutabilityPolicyMode"]) {
+        blobProperties.immutabilityPolicyMode = blobPropertiesInXML["ImmutabilityPolicyMode"];
+        delete blobProperties["ImmutabilityPolicyMode"];
+    }
+    if (blobPropertiesInXML["LegalHold"]) {
+        blobProperties.legalHold = ParseBoolean(blobPropertiesInXML["LegalHold"]);
+        delete blobProperties["LegalHold"];
+    }
+    return blobProperties;
+}
 function ParseBlobItem(blobInXML) {
-    const blobPropertiesInXML = blobInXML["Properties"];
-    const blobProperties = {
-        createdOn: new Date(blobPropertiesInXML["Creation-Time"]),
-        lastModified: new Date(blobPropertiesInXML["Last-Modified"]),
-        etag: blobPropertiesInXML["Etag"],
-        contentLength: blobPropertiesInXML["Content-Length"] === undefined
-            ? undefined
-            : parseFloat(blobPropertiesInXML["Content-Length"]),
-        contentType: blobPropertiesInXML["Content-Type"],
-        contentEncoding: blobPropertiesInXML["Content-Encoding"],
-        contentLanguage: blobPropertiesInXML["Content-Language"],
-        contentMD5: decodeBase64String(blobPropertiesInXML["Content-MD5"]),
-        contentDisposition: blobPropertiesInXML["Content-Disposition"],
-        cacheControl: blobPropertiesInXML["Cache-Control"],
-        blobSequenceNumber: blobPropertiesInXML["x-ms-blob-sequence-number"] === undefined
-            ? undefined
-            : parseFloat(blobPropertiesInXML["x-ms-blob-sequence-number"]),
-        blobType: blobPropertiesInXML["BlobType"],
-        leaseStatus: blobPropertiesInXML["LeaseStatus"],
-        leaseState: blobPropertiesInXML["LeaseState"],
-        leaseDuration: blobPropertiesInXML["LeaseDuration"],
-        copyId: blobPropertiesInXML["CopyId"],
-        copyStatus: blobPropertiesInXML["CopyStatus"],
-        copySource: blobPropertiesInXML["CopySource"],
-        copyProgress: blobPropertiesInXML["CopyProgress"],
-        copyCompletedOn: blobPropertiesInXML["CopyCompletionTime"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["CopyCompletionTime"]),
-        copyStatusDescription: blobPropertiesInXML["CopyStatusDescription"],
-        serverEncrypted: ParseBoolean(blobPropertiesInXML["ServerEncrypted"]),
-        incrementalCopy: ParseBoolean(blobPropertiesInXML["IncrementalCopy"]),
-        destinationSnapshot: blobPropertiesInXML["DestinationSnapshot"],
-        deletedOn: blobPropertiesInXML["DeletedTime"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["DeletedTime"]),
-        remainingRetentionDays: blobPropertiesInXML["RemainingRetentionDays"] === undefined
-            ? undefined
-            : parseFloat(blobPropertiesInXML["RemainingRetentionDays"]),
-        accessTier: blobPropertiesInXML["AccessTier"],
-        accessTierInferred: ParseBoolean(blobPropertiesInXML["AccessTierInferred"]),
-        archiveStatus: blobPropertiesInXML["ArchiveStatus"],
-        customerProvidedKeySha256: blobPropertiesInXML["CustomerProvidedKeySha256"],
-        encryptionScope: blobPropertiesInXML["EncryptionScope"],
-        accessTierChangedOn: blobPropertiesInXML["AccessTierChangeTime"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["AccessTierChangeTime"]),
-        tagCount: blobPropertiesInXML["TagCount"] === undefined
-            ? undefined
-            : parseFloat(blobPropertiesInXML["TagCount"]),
-        expiresOn: blobPropertiesInXML["Expiry-Time"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["Expiry-Time"]),
-        isSealed: ParseBoolean(blobPropertiesInXML["Sealed"]),
-        rehydratePriority: blobPropertiesInXML["RehydratePriority"],
-        lastAccessedOn: blobPropertiesInXML["LastAccessTime"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["LastAccessTime"]),
-        immutabilityPolicyExpiresOn: blobPropertiesInXML["ImmutabilityPolicyUntilDate"] === undefined
-            ? undefined
-            : new Date(blobPropertiesInXML["ImmutabilityPolicyUntilDate"]),
-        immutabilityPolicyMode: blobPropertiesInXML["ImmutabilityPolicyMode"],
-        legalHold: ParseBoolean(blobPropertiesInXML["LegalHold"]),
-    };
-    return {
-        name: ParseBlobName(blobInXML["Name"]),
-        deleted: ParseBoolean(blobInXML["Deleted"]),
-        snapshot: blobInXML["Snapshot"],
-        versionId: blobInXML["VersionId"],
-        isCurrentVersion: ParseBoolean(blobInXML["IsCurrentVersion"]),
-        properties: blobProperties,
-        metadata: blobInXML["Metadata"],
-        blobTags: ParseBlobTags(blobInXML["Tags"]),
-        objectReplicationMetadata: blobInXML["OrMetadata"],
-        hasVersionsOnly: ParseBoolean(blobInXML["HasVersionsOnly"]),
-    };
+    const blobItem = blobInXML;
+    blobItem.properties = ParseBlobProperties(blobInXML["Properties"]);
+    delete blobItem["Properties"];
+    blobItem.name = ParseBlobName(blobInXML["Name"]);
+    delete blobItem["Name"];
+    blobItem.deleted = ParseBoolean(blobInXML["Deleted"]);
+    delete blobItem["Deleted"];
+    if (blobInXML["Snapshot"]) {
+        blobItem.snapshot = blobInXML["Snapshot"];
+        delete blobItem["Snapshot"];
+    }
+    if (blobInXML["VersionId"]) {
+        blobItem.versionId = blobInXML["VersionId"];
+        delete blobItem["VersionId"];
+    }
+    if (blobInXML["IsCurrentVersion"]) {
+        blobItem.isCurrentVersion = ParseBoolean(blobInXML["IsCurrentVersion"]);
+        delete blobItem["IsCurrentVersion"];
+    }
+    if (blobInXML["Metadata"]) {
+        blobItem.metadata = blobInXML["Metadata"];
+        delete blobItem["Metadata"];
+    }
+    if (blobInXML["Tags"]) {
+        blobItem.blobTags = ParseBlobTags(blobInXML["Tags"]);
+        delete blobItem["Tags"];
+    }
+    if (blobInXML["OrMetadata"]) {
+        blobItem.objectReplicationMetadata = blobInXML["OrMetadata"];
+        delete blobItem["OrMetadata"];
+    }
+    if (blobInXML["HasVersionsOnly"]) {
+        blobItem.hasVersionsOnly = ParseBoolean(blobInXML["HasVersionsOnly"]);
+        delete blobItem["HasVersionsOnly"];
+    }
+    return blobItem;
 }
 function ParseBlobPrefix(blobPrefixInXML) {
     return {
@@ -35961,6 +37917,48 @@ function ProcessBlobPrefixes(blobPrefixesInXML) {
         blobPrefixes.push(ParseBlobPrefix(blobPrefixesInXML));
     }
     return blobPrefixes;
+}
+function* ExtractPageRangeInfoItems(getPageRangesSegment) {
+    let pageRange = [];
+    let clearRange = [];
+    if (getPageRangesSegment.pageRange)
+        pageRange = getPageRangesSegment.pageRange;
+    if (getPageRangesSegment.clearRange)
+        clearRange = getPageRangesSegment.clearRange;
+    let pageRangeIndex = 0;
+    let clearRangeIndex = 0;
+    while (pageRangeIndex < pageRange.length && clearRangeIndex < clearRange.length) {
+        if (pageRange[pageRangeIndex].start < clearRange[clearRangeIndex].start) {
+            yield {
+                start: pageRange[pageRangeIndex].start,
+                end: pageRange[pageRangeIndex].end,
+                isClear: false,
+            };
+            ++pageRangeIndex;
+        }
+        else {
+            yield {
+                start: clearRange[clearRangeIndex].start,
+                end: clearRange[clearRangeIndex].end,
+                isClear: true,
+            };
+            ++clearRangeIndex;
+        }
+    }
+    for (; pageRangeIndex < pageRange.length; ++pageRangeIndex) {
+        yield {
+            start: pageRange[pageRangeIndex].start,
+            end: pageRange[pageRangeIndex].end,
+            isClear: false,
+        };
+    }
+    for (; clearRangeIndex < clearRange.length; ++clearRangeIndex) {
+        yield {
+            start: clearRange[clearRangeIndex].start,
+            end: clearRange[clearRangeIndex].end,
+            isClear: true,
+        };
+    }
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -36379,7 +38377,10 @@ class TelemetryPolicyFactory {
                 userAgentInfo.push(libInfo);
             }
             // e.g. (NODE-VERSION 4.9.1; Windows_NT 10.0.16299)
-            const runtimeInfo = `(NODE-VERSION ${process.version}; ${os__namespace.type()} ${os__namespace.release()})`;
+            let runtimeInfo = `(NODE-VERSION ${process.version})`;
+            if (os__namespace) {
+                runtimeInfo = `(NODE-VERSION ${process.version}; ${os__namespace.type()} ${os__namespace.release()})`;
+            }
             if (userAgentInfo.indexOf(runtimeInfo) === -1) {
                 userAgentInfo.push(runtimeInfo);
             }
@@ -36917,7 +38918,7 @@ class StorageSharedKeyCredential extends Credential {
  * Changes may cause incorrect behavior and will be lost if the code is regenerated.
  */
 const packageName = "azure-storage-blob";
-const packageVersion = "12.9.0";
+const packageVersion = "12.10.0";
 class StorageClientContext extends coreHttp__namespace.ServiceClient {
     /**
      * Initializes a new instance of the StorageClientContext class.
@@ -36943,7 +38944,7 @@ class StorageClientContext extends coreHttp__namespace.ServiceClient {
         // Parameter assignments
         this.url = url;
         // Assigning values to Constant parameters
-        this.version = options.version || "2021-04-10";
+        this.version = options.version || "2021-06-08";
     }
 }
 
@@ -39027,22 +41028,6 @@ const AVRO_SCHEMA_KEY = "avro.schema";
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-function arraysEqual(a, b) {
-    if (a === b)
-        return true;
-    if (a == null || b == null)
-        return false;
-    if (a.length != b.length)
-        return false;
-    for (let i = 0; i < a.length; ++i) {
-        if (a[i] !== b[i])
-            return false;
-    }
-    return true;
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
 class AvroParser {
     /**
      * Reads a fixed number of bytes from the stream.
@@ -39053,7 +41038,7 @@ class AvroParser {
      */
     static async readFixedBytes(stream, length, options = {}) {
         const bytes = await stream.read(length, { abortSignal: options.abortSignal });
-        if (bytes.length != length) {
+        if (bytes.length !== length) {
             throw new Error("Hit stream end.");
         }
         return bytes;
@@ -39083,6 +41068,7 @@ class AvroParser {
         } while (haveMoreByte && significanceInBit < 28); // bitwise operation only works for 32-bit integers
         if (haveMoreByte) {
             // Switch to float arithmetic
+            // eslint-disable-next-line no-self-assign
             zigZagEncoded = zigZagEncoded;
             significanceInFloat = 268435456; // 2 ** 28.
             do {
@@ -39109,10 +41095,10 @@ class AvroParser {
     }
     static async readBoolean(stream, options = {}) {
         const b = await AvroParser.readByte(stream, options);
-        if (b == 1) {
+        if (b === 1) {
             return true;
         }
-        else if (b == 0) {
+        else if (b === 0) {
             return false;
         }
         else {
@@ -39134,16 +41120,10 @@ class AvroParser {
         if (size < 0) {
             throw new Error("Bytes size was negative.");
         }
-        return await stream.read(size, { abortSignal: options.abortSignal });
+        return stream.read(size, { abortSignal: options.abortSignal });
     }
     static async readString(stream, options = {}) {
         const u8arr = await AvroParser.readBytes(stream, options);
-        // polyfill TextDecoder to be backward compatible with older
-        // nodejs that doesn't expose TextDecoder as a global variable
-        if (typeof TextDecoder === "undefined" && "function" !== "undefined") {
-            global.TextDecoder = __nccwpck_require__(1669).TextDecoder;
-        }
-        // FUTURE: need TextDecoder polyfill for IE
         const utf8decoder = new TextDecoder();
         return utf8decoder.decode(u8arr);
     }
@@ -39154,8 +41134,8 @@ class AvroParser {
         return { key, value };
     }
     static async readMap(stream, readItemMethod, options = {}) {
-        const readPairMethod = async (stream, options = {}) => {
-            return await AvroParser.readMapPair(stream, readItemMethod, options);
+        const readPairMethod = (s, opts = {}) => {
+            return AvroParser.readMapPair(s, readItemMethod, opts);
         };
         const pairs = await AvroParser.readArray(stream, readPairMethod, options);
         const dict = {};
@@ -39166,7 +41146,7 @@ class AvroParser {
     }
     static async readArray(stream, readItemMethod, options = {}) {
         const items = [];
-        for (let count = await AvroParser.readLong(stream, options); count != 0; count = await AvroParser.readLong(stream, options)) {
+        for (let count = await AvroParser.readLong(stream, options); count !== 0; count = await AvroParser.readLong(stream, options)) {
             if (count < 0) {
                 // Ignore block sizes
                 await AvroParser.readLong(stream, options);
@@ -39189,6 +41169,17 @@ var AvroComplex;
     AvroComplex["UNION"] = "union";
     AvroComplex["FIXED"] = "fixed";
 })(AvroComplex || (AvroComplex = {}));
+var AvroPrimitive;
+(function (AvroPrimitive) {
+    AvroPrimitive["NULL"] = "null";
+    AvroPrimitive["BOOLEAN"] = "boolean";
+    AvroPrimitive["INT"] = "int";
+    AvroPrimitive["LONG"] = "long";
+    AvroPrimitive["FLOAT"] = "float";
+    AvroPrimitive["DOUBLE"] = "double";
+    AvroPrimitive["BYTES"] = "bytes";
+    AvroPrimitive["STRING"] = "string";
+})(AvroPrimitive || (AvroPrimitive = {}));
 class AvroType {
     /**
      * Determines the AvroType from the Avro Schema.
@@ -39228,7 +41219,9 @@ class AvroType {
         try {
             return AvroType.fromStringSchema(type);
         }
-        catch (err) { }
+        catch (err) {
+            // eslint-disable-line no-empty
+        }
         switch (type) {
             case AvroComplex.RECORD:
                 if (schema.aliases) {
@@ -39237,6 +41230,7 @@ class AvroType {
                 if (!schema.name) {
                     throw new Error(`Required attribute 'name' doesn't exist on schema: ${schema}`);
                 }
+                // eslint-disable-next-line no-case-declarations
                 const fields = {};
                 if (!schema.fields) {
                     throw new Error(`Required attribute 'fields' doesn't exist on schema: ${schema}`);
@@ -39265,40 +41259,29 @@ class AvroType {
         }
     }
 }
-var AvroPrimitive;
-(function (AvroPrimitive) {
-    AvroPrimitive["NULL"] = "null";
-    AvroPrimitive["BOOLEAN"] = "boolean";
-    AvroPrimitive["INT"] = "int";
-    AvroPrimitive["LONG"] = "long";
-    AvroPrimitive["FLOAT"] = "float";
-    AvroPrimitive["DOUBLE"] = "double";
-    AvroPrimitive["BYTES"] = "bytes";
-    AvroPrimitive["STRING"] = "string";
-})(AvroPrimitive || (AvroPrimitive = {}));
 class AvroPrimitiveType extends AvroType {
     constructor(primitive) {
         super();
         this._primitive = primitive;
     }
-    async read(stream, options = {}) {
+    read(stream, options = {}) {
         switch (this._primitive) {
             case AvroPrimitive.NULL:
-                return await AvroParser.readNull();
+                return AvroParser.readNull();
             case AvroPrimitive.BOOLEAN:
-                return await AvroParser.readBoolean(stream, options);
+                return AvroParser.readBoolean(stream, options);
             case AvroPrimitive.INT:
-                return await AvroParser.readInt(stream, options);
+                return AvroParser.readInt(stream, options);
             case AvroPrimitive.LONG:
-                return await AvroParser.readLong(stream, options);
+                return AvroParser.readLong(stream, options);
             case AvroPrimitive.FLOAT:
-                return await AvroParser.readFloat(stream, options);
+                return AvroParser.readFloat(stream, options);
             case AvroPrimitive.DOUBLE:
-                return await AvroParser.readDouble(stream, options);
+                return AvroParser.readDouble(stream, options);
             case AvroPrimitive.BYTES:
-                return await AvroParser.readBytes(stream, options);
+                return AvroParser.readBytes(stream, options);
             case AvroPrimitive.STRING:
-                return await AvroParser.readString(stream, options);
+                return AvroParser.readString(stream, options);
             default:
                 throw new Error("Unknown Avro Primitive");
         }
@@ -39321,7 +41304,7 @@ class AvroUnionType extends AvroType {
     }
     async read(stream, options = {}) {
         const typeIndex = await AvroParser.readInt(stream, options);
-        return await this._types[typeIndex].read(stream, options);
+        return this._types[typeIndex].read(stream, options);
     }
 }
 class AvroMapType extends AvroType {
@@ -39329,11 +41312,11 @@ class AvroMapType extends AvroType {
         super();
         this._itemType = itemType;
     }
-    async read(stream, options = {}) {
-        const readItemMethod = async (s, options) => {
-            return await this._itemType.read(s, options);
+    read(stream, options = {}) {
+        const readItemMethod = (s, opts) => {
+            return this._itemType.read(s, opts);
         };
-        return await AvroParser.readMap(stream, readItemMethod, options);
+        return AvroParser.readMap(stream, readItemMethod, options);
     }
 }
 class AvroRecordType extends AvroType {
@@ -39346,12 +41329,29 @@ class AvroRecordType extends AvroType {
         const record = {};
         record["$schema"] = this._name;
         for (const key in this._fields) {
-            if (this._fields.hasOwnProperty(key)) {
+            if (Object.prototype.hasOwnProperty.call(this._fields, key)) {
                 record[key] = await this._fields[key].read(stream, options);
             }
         }
         return record;
     }
+}
+
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT license.
+function arraysEqual(a, b) {
+    if (a === b)
+        return true;
+    // eslint-disable-next-line eqeqeq
+    if (a == null || b == null)
+        return false;
+    if (a.length !== b.length)
+        return false;
+    for (let i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i])
+            return false;
+    }
+    return true;
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -39384,7 +41384,7 @@ class AvroReader {
         });
         // Validate codec
         const codec = this._metadata[AVRO_CODEC_KEY];
-        if (!(codec == undefined || codec == "null")) {
+        if (!(codec === undefined || codec === null || codec === "null")) {
             throw new Error("Codecs are not supported");
         }
         // The 16-byte, randomly-generated sync marker for this file.
@@ -39394,7 +41394,7 @@ class AvroReader {
         // Parse the schema
         const schema = JSON.parse(this._metadata[AVRO_SCHEMA_KEY]);
         this._itemType = AvroType.fromSchema(schema);
-        if (this._blockOffset == 0) {
+        if (this._blockOffset === 0) {
             this._blockOffset = this._initialBlockOffset + this._dataStream.position;
         }
         this._itemsRemainingInBlock = await AvroParser.readLong(this._dataStream, {
@@ -39424,7 +41424,7 @@ class AvroReader {
                 }));
                 this._itemsRemainingInBlock--;
                 this._objectIndex++;
-                if (this._itemsRemainingInBlock == 0) {
+                if (this._itemsRemainingInBlock === 0) {
                     const marker = yield tslib.__await(AvroParser.readFixedBytes(this._dataStream, AVRO_SYNC_MARKER_SIZE, {
                         abortSignal: options.abortSignal,
                     }));
@@ -39499,6 +41499,7 @@ class AvroReadableFromStream extends AvroReadable {
         else {
             // register callback to wait for enough data to read
             return new Promise((resolve, reject) => {
+                /* eslint-disable @typescript-eslint/no-use-before-define */
                 const cleanUp = () => {
                     this._readable.removeListener("readable", readableCallback);
                     this._readable.removeListener("error", rejectCallback);
@@ -39509,12 +41510,12 @@ class AvroReadableFromStream extends AvroReadable {
                     }
                 };
                 const readableCallback = () => {
-                    const chunk = this._readable.read(size);
-                    if (chunk) {
-                        this._position += chunk.length;
+                    const callbackChunk = this._readable.read(size);
+                    if (callbackChunk) {
+                        this._position += callbackChunk.length;
                         cleanUp();
-                        // chunk.length maybe less than desired size if the stream ends.
-                        resolve(this.toUint8Array(chunk));
+                        // callbackChunk.length maybe less than desired size if the stream ends.
+                        resolve(this.toUint8Array(callbackChunk));
                     }
                 };
                 const rejectCallback = () => {
@@ -39532,6 +41533,7 @@ class AvroReadableFromStream extends AvroReadable {
                 if (options.abortSignal) {
                     options.abortSignal.addEventListener("abort", abortHandler);
                 }
+                /* eslint-enable @typescript-eslint/no-use-before-define */
             });
         }
     }
@@ -41205,7 +43207,8 @@ class BlobClient extends StorageClient {
                 return false;
             }
             else if (e.statusCode === 409 &&
-                e.details.errorCode === BlobUsesCustomerSpecifiedEncryptionMsg) {
+                (e.details.errorCode === BlobUsesCustomerSpecifiedEncryptionMsg ||
+                    e.details.errorCode === BlobDoesNotUseCustomerSpecifiedEncryption)) {
                 // Expected exception when checking blob existence
                 return true;
             }
@@ -41618,7 +43621,7 @@ class BlobClient extends StorageClient {
                     sourceIfModifiedSince: options.sourceConditions.ifModifiedSince,
                     sourceIfNoneMatch: options.sourceConditions.ifNoneMatch,
                     sourceIfUnmodifiedSince: options.sourceConditions.ifUnmodifiedSince,
-                }, sourceContentMD5: options.sourceContentMD5, copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization), blobTagsString: toBlobTagsString(options.tags), immutabilityPolicyExpiry: (_b = options.immutabilityPolicy) === null || _b === void 0 ? void 0 : _b.expiriesOn, immutabilityPolicyMode: (_c = options.immutabilityPolicy) === null || _c === void 0 ? void 0 : _c.policyMode, legalHold: options.legalHold, encryptionScope: options.encryptionScope }, convertTracingToRequestOptionsBase(updatedOptions)));
+                }, sourceContentMD5: options.sourceContentMD5, copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization), blobTagsString: toBlobTagsString(options.tags), immutabilityPolicyExpiry: (_b = options.immutabilityPolicy) === null || _b === void 0 ? void 0 : _b.expiriesOn, immutabilityPolicyMode: (_c = options.immutabilityPolicy) === null || _c === void 0 ? void 0 : _c.policyMode, legalHold: options.legalHold, encryptionScope: options.encryptionScope, copySourceTags: options.copySourceTags }, convertTracingToRequestOptionsBase(updatedOptions)));
         }
         catch (e) {
             span.setStatus({
@@ -42341,12 +44344,13 @@ class BlockBlobClient extends BlobClient {
             if (!coreHttp.isNode) {
                 throw new Error("This operation currently is only supported in Node.js.");
             }
+            ensureCpkIfSpecified(options.customerProvidedKey, this.isHttps);
             const response = await this._blobContext.query(Object.assign({ abortSignal: options.abortSignal, queryRequest: {
                     queryType: "SQL",
                     expression: query,
                     inputSerialization: toQuerySerialization(options.inputTextConfiguration),
                     outputSerialization: toQuerySerialization(options.outputTextConfiguration),
-                }, leaseAccessConditions: options.conditions, modifiedAccessConditions: Object.assign(Object.assign({}, options.conditions), { ifTags: (_a = options.conditions) === null || _a === void 0 ? void 0 : _a.tagConditions }) }, convertTracingToRequestOptionsBase(updatedOptions)));
+                }, leaseAccessConditions: options.conditions, modifiedAccessConditions: Object.assign(Object.assign({}, options.conditions), { ifTags: (_a = options.conditions) === null || _a === void 0 ? void 0 : _a.tagConditions }), cpkInfo: options.customerProvidedKey }, convertTracingToRequestOptionsBase(updatedOptions)));
             return new BlobQueryResponse(response, {
                 abortSignal: options.abortSignal,
                 onProgress: options.onProgress,
@@ -42442,7 +44446,7 @@ class BlockBlobClient extends BlobClient {
                     sourceIfNoneMatch: (_c = options.sourceConditions) === null || _c === void 0 ? void 0 : _c.ifNoneMatch,
                     sourceIfUnmodifiedSince: (_d = options.sourceConditions) === null || _d === void 0 ? void 0 : _d.ifUnmodifiedSince,
                     sourceIfTags: (_e = options.sourceConditions) === null || _e === void 0 ? void 0 : _e.tagConditions,
-                }, cpkInfo: options.customerProvidedKey, copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization), tier: toAccessTier(options.tier), blobTagsString: toBlobTagsString(options.tags) }), convertTracingToRequestOptionsBase(updatedOptions)));
+                }, cpkInfo: options.customerProvidedKey, copySourceAuthorization: httpAuthorizationToString(options.sourceAuthorization), tier: toAccessTier(options.tier), blobTagsString: toBlobTagsString(options.tags), copySourceTags: options.copySourceTags }), convertTracingToRequestOptionsBase(updatedOptions)));
         }
         catch (e) {
             span.setStatus({
@@ -43139,6 +45143,183 @@ class PageBlobClient extends BlobClient {
         }
     }
     /**
+     * getPageRangesSegment returns a single segment of page ranges starting from the
+     * specified Marker. Use an empty Marker to start enumeration from the beginning.
+     * After getting a segment, process it, and then call getPageRangesSegment again
+     * (passing the the previously-returned Marker) to get the next segment.
+     * @see https://docs.microsoft.com/rest/api/storageservices/get-page-ranges
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param marker - A string value that identifies the portion of the list to be returned with the next list operation.
+     * @param options - Options to PageBlob Get Page Ranges Segment operation.
+     */
+    async listPageRangesSegment(offset = 0, count, marker, options = {}) {
+        var _a;
+        const { span, updatedOptions } = createSpan("PageBlobClient-getPageRangesSegment", options);
+        try {
+            return await this.pageBlobContext.getPageRanges(Object.assign({ abortSignal: options.abortSignal, leaseAccessConditions: options.conditions, modifiedAccessConditions: Object.assign(Object.assign({}, options.conditions), { ifTags: (_a = options.conditions) === null || _a === void 0 ? void 0 : _a.tagConditions }), range: rangeToString({ offset, count }), marker: marker, maxPageSize: options.maxPageSize }, convertTracingToRequestOptionsBase(updatedOptions)));
+        }
+        catch (e) {
+            span.setStatus({
+                code: coreTracing.SpanStatusCode.ERROR,
+                message: e.message,
+            });
+            throw e;
+        }
+        finally {
+            span.end();
+        }
+    }
+    /**
+     * Returns an AsyncIterableIterator for {@link PageBlobGetPageRangesResponseModel}
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param marker - A string value that identifies the portion of
+     *                          the get of page ranges to be returned with the next getting operation. The
+     *                          operation returns the ContinuationToken value within the response body if the
+     *                          getting operation did not return all page ranges remaining within the current page.
+     *                          The ContinuationToken value can be used as the value for
+     *                          the marker parameter in a subsequent call to request the next page of get
+     *                          items. The marker value is opaque to the client.
+     * @param options - Options to List Page Ranges operation.
+     */
+    listPageRangeItemSegments(offset = 0, count, marker, options = {}) {
+        return tslib.__asyncGenerator(this, arguments, function* listPageRangeItemSegments_1() {
+            let getPageRangeItemSegmentsResponse;
+            if (!!marker || marker === undefined) {
+                do {
+                    getPageRangeItemSegmentsResponse = yield tslib.__await(this.listPageRangesSegment(offset, count, marker, options));
+                    marker = getPageRangeItemSegmentsResponse.continuationToken;
+                    yield yield tslib.__await(yield tslib.__await(getPageRangeItemSegmentsResponse));
+                } while (marker);
+            }
+        });
+    }
+    /**
+     * Returns an AsyncIterableIterator of {@link PageRangeInfo} objects
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param options - Options to List Page Ranges operation.
+     */
+    listPageRangeItems(offset = 0, count, options = {}) {
+        return tslib.__asyncGenerator(this, arguments, function* listPageRangeItems_1() {
+            var e_1, _a;
+            let marker;
+            try {
+                for (var _b = tslib.__asyncValues(this.listPageRangeItemSegments(offset, count, marker, options)), _c; _c = yield tslib.__await(_b.next()), !_c.done;) {
+                    const getPageRangesSegment = _c.value;
+                    yield tslib.__await(yield* tslib.__asyncDelegator(tslib.__asyncValues(ExtractPageRangeInfoItems(getPageRangesSegment))));
+                }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) yield tslib.__await(_a.call(_b));
+                }
+                finally { if (e_1) throw e_1.error; }
+            }
+        });
+    }
+    /**
+     * Returns an async iterable iterator to list of page ranges for a page blob.
+     * @see https://docs.microsoft.com/rest/api/storageservices/get-page-ranges
+     *
+     *  .byPage() returns an async iterable iterator to list of page ranges for a page blob.
+     *
+     * Example using `for await` syntax:
+     *
+     * ```js
+     * // Get the pageBlobClient before you run these snippets,
+     * // Can be obtained from `blobServiceClient.getContainerClient("<your-container-name>").getPageBlobClient("<your-blob-name>");`
+     * let i = 1;
+     * for await (const pageRange of pageBlobClient.listPageRanges()) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     * ```
+     *
+     * Example using `iter.next()`:
+     *
+     * ```js
+     * let i = 1;
+     * let iter = pageBlobClient.listPageRanges();
+     * let pageRangeItem = await iter.next();
+     * while (!pageRangeItem.done) {
+     *   console.log(`Page range ${i++}: ${pageRangeItem.value.start} - ${pageRangeItem.value.end}, IsClear: ${pageRangeItem.value.isClear}`);
+     *   pageRangeItem = await iter.next();
+     * }
+     * ```
+     *
+     * Example using `byPage()`:
+     *
+     * ```js
+     * // passing optional maxPageSize in the page settings
+     * let i = 1;
+     * for await (const response of pageBlobClient.listPageRanges().byPage({ maxPageSize: 20 })) {
+     *   for (const pageRange of response) {
+     *     console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     *   }
+     * }
+     * ```
+     *
+     * Example using paging with a marker:
+     *
+     * ```js
+     * let i = 1;
+     * let iterator = pageBlobClient.listPageRanges().byPage({ maxPageSize: 2 });
+     * let response = (await iterator.next()).value;
+     *
+     * // Prints 2 page ranges
+     * for (const pageRange of response) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     *
+     * // Gets next marker
+     * let marker = response.continuationToken;
+     *
+     * // Passing next marker as continuationToken
+     *
+     * iterator = pageBlobClient.listPageRanges().byPage({ continuationToken: marker, maxPageSize: 10 });
+     * response = (await iterator.next()).value;
+     *
+     * // Prints 10 page ranges
+     * for (const blob of response) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     * ```
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param options - Options to the Page Blob Get Ranges operation.
+     * @returns An asyncIterableIterator that supports paging.
+     */
+    listPageRanges(offset = 0, count, options = {}) {
+        options.conditions = options.conditions || {};
+        // AsyncIterableIterator to iterate over blobs
+        const iter = this.listPageRangeItems(offset, count, options);
+        return {
+            /**
+             * The next method, part of the iteration protocol
+             */
+            next() {
+                return iter.next();
+            },
+            /**
+             * The connection to the async iterator, part of the iteration protocol
+             */
+            [Symbol.asyncIterator]() {
+                return this;
+            },
+            /**
+             * Return an AsyncIterableIterator that works a page at a time
+             */
+            byPage: (settings = {}) => {
+                return this.listPageRangeItemSegments(offset, count, settings.continuationToken, Object.assign({ maxPageSize: settings.maxPageSize }, options));
+            },
+        };
+    }
+    /**
      * Gets the collection of page ranges that differ between a specified snapshot and this page blob.
      * @see https://docs.microsoft.com/rest/api/storageservices/get-page-ranges
      *
@@ -43167,6 +45348,192 @@ class PageBlobClient extends BlobClient {
         finally {
             span.end();
         }
+    }
+    /**
+     * getPageRangesDiffSegment returns a single segment of page ranges starting from the
+     * specified Marker for difference between previous snapshot and the target page blob.
+     * Use an empty Marker to start enumeration from the beginning.
+     * After getting a segment, process it, and then call getPageRangesDiffSegment again
+     * (passing the the previously-returned Marker) to get the next segment.
+     * @see https://docs.microsoft.com/rest/api/storageservices/get-page-ranges
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param prevSnapshotOrUrl - Timestamp of snapshot to retrieve the difference or URL of snapshot to retrieve the difference.
+     * @param marker - A string value that identifies the portion of the get to be returned with the next get operation.
+     * @param options - Options to the Page Blob Get Page Ranges Diff operation.
+     */
+    async listPageRangesDiffSegment(offset, count, prevSnapshotOrUrl, marker, options) {
+        var _a;
+        const { span, updatedOptions } = createSpan("PageBlobClient-getPageRangesDiffSegment", options);
+        try {
+            return await this.pageBlobContext.getPageRangesDiff(Object.assign({ abortSignal: options === null || options === void 0 ? void 0 : options.abortSignal, leaseAccessConditions: options === null || options === void 0 ? void 0 : options.conditions, modifiedAccessConditions: Object.assign(Object.assign({}, options === null || options === void 0 ? void 0 : options.conditions), { ifTags: (_a = options === null || options === void 0 ? void 0 : options.conditions) === null || _a === void 0 ? void 0 : _a.tagConditions }), prevsnapshot: prevSnapshotOrUrl, range: rangeToString({
+                    offset: offset,
+                    count: count,
+                }), marker: marker, maxPageSize: options === null || options === void 0 ? void 0 : options.maxPageSize }, convertTracingToRequestOptionsBase(updatedOptions)));
+        }
+        catch (e) {
+            span.setStatus({
+                code: coreTracing.SpanStatusCode.ERROR,
+                message: e.message,
+            });
+            throw e;
+        }
+        finally {
+            span.end();
+        }
+    }
+    /**
+     * Returns an AsyncIterableIterator for {@link PageBlobGetPageRangesDiffResponseModel}
+     *
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param prevSnapshotOrUrl - Timestamp of snapshot to retrieve the difference or URL of snapshot to retrieve the difference.
+     * @param marker - A string value that identifies the portion of
+     *                          the get of page ranges to be returned with the next getting operation. The
+     *                          operation returns the ContinuationToken value within the response body if the
+     *                          getting operation did not return all page ranges remaining within the current page.
+     *                          The ContinuationToken value can be used as the value for
+     *                          the marker parameter in a subsequent call to request the next page of get
+     *                          items. The marker value is opaque to the client.
+     * @param options - Options to the Page Blob Get Page Ranges Diff operation.
+     */
+    listPageRangeDiffItemSegments(offset, count, prevSnapshotOrUrl, marker, options) {
+        return tslib.__asyncGenerator(this, arguments, function* listPageRangeDiffItemSegments_1() {
+            let getPageRangeItemSegmentsResponse;
+            if (!!marker || marker === undefined) {
+                do {
+                    getPageRangeItemSegmentsResponse = yield tslib.__await(this.listPageRangesDiffSegment(offset, count, prevSnapshotOrUrl, marker, options));
+                    marker = getPageRangeItemSegmentsResponse.continuationToken;
+                    yield yield tslib.__await(yield tslib.__await(getPageRangeItemSegmentsResponse));
+                } while (marker);
+            }
+        });
+    }
+    /**
+     * Returns an AsyncIterableIterator of {@link PageRangeInfo} objects
+     *
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param prevSnapshotOrUrl - Timestamp of snapshot to retrieve the difference or URL of snapshot to retrieve the difference.
+     * @param options - Options to the Page Blob Get Page Ranges Diff operation.
+     */
+    listPageRangeDiffItems(offset, count, prevSnapshotOrUrl, options) {
+        return tslib.__asyncGenerator(this, arguments, function* listPageRangeDiffItems_1() {
+            var e_2, _a;
+            let marker;
+            try {
+                for (var _b = tslib.__asyncValues(this.listPageRangeDiffItemSegments(offset, count, prevSnapshotOrUrl, marker, options)), _c; _c = yield tslib.__await(_b.next()), !_c.done;) {
+                    const getPageRangesSegment = _c.value;
+                    yield tslib.__await(yield* tslib.__asyncDelegator(tslib.__asyncValues(ExtractPageRangeInfoItems(getPageRangesSegment))));
+                }
+            }
+            catch (e_2_1) { e_2 = { error: e_2_1 }; }
+            finally {
+                try {
+                    if (_c && !_c.done && (_a = _b.return)) yield tslib.__await(_a.call(_b));
+                }
+                finally { if (e_2) throw e_2.error; }
+            }
+        });
+    }
+    /**
+     * Returns an async iterable iterator to list of page ranges that differ between a specified snapshot and this page blob.
+     * @see https://docs.microsoft.com/rest/api/storageservices/get-page-ranges
+     *
+     *  .byPage() returns an async iterable iterator to list of page ranges that differ between a specified snapshot and this page blob.
+     *
+     * Example using `for await` syntax:
+     *
+     * ```js
+     * // Get the pageBlobClient before you run these snippets,
+     * // Can be obtained from `blobServiceClient.getContainerClient("<your-container-name>").getPageBlobClient("<your-blob-name>");`
+     * let i = 1;
+     * for await (const pageRange of pageBlobClient.listPageRangesDiff()) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     * ```
+     *
+     * Example using `iter.next()`:
+     *
+     * ```js
+     * let i = 1;
+     * let iter = pageBlobClient.listPageRangesDiff();
+     * let pageRangeItem = await iter.next();
+     * while (!pageRangeItem.done) {
+     *   console.log(`Page range ${i++}: ${pageRangeItem.value.start} - ${pageRangeItem.value.end}, IsClear: ${pageRangeItem.value.isClear}`);
+     *   pageRangeItem = await iter.next();
+     * }
+     * ```
+     *
+     * Example using `byPage()`:
+     *
+     * ```js
+     * // passing optional maxPageSize in the page settings
+     * let i = 1;
+     * for await (const response of pageBlobClient.listPageRangesDiff().byPage({ maxPageSize: 20 })) {
+     *   for (const pageRange of response) {
+     *     console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     *   }
+     * }
+     * ```
+     *
+     * Example using paging with a marker:
+     *
+     * ```js
+     * let i = 1;
+     * let iterator = pageBlobClient.listPageRangesDiff().byPage({ maxPageSize: 2 });
+     * let response = (await iterator.next()).value;
+     *
+     * // Prints 2 page ranges
+     * for (const pageRange of response) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     *
+     * // Gets next marker
+     * let marker = response.continuationToken;
+     *
+     * // Passing next marker as continuationToken
+     *
+     * iterator = pageBlobClient.listPageRangesDiff().byPage({ continuationToken: marker, maxPageSize: 10 });
+     * response = (await iterator.next()).value;
+     *
+     * // Prints 10 page ranges
+     * for (const blob of response) {
+     *   console.log(`Page range ${i++}: ${pageRange.start} - ${pageRange.end}`);
+     * }
+     * ```
+     * @param offset - Starting byte position of the page ranges.
+     * @param count - Number of bytes to get.
+     * @param prevSnapshot - Timestamp of snapshot to retrieve the difference.
+     * @param options - Options to the Page Blob Get Ranges operation.
+     * @returns An asyncIterableIterator that supports paging.
+     */
+    listPageRangesDiff(offset, count, prevSnapshot, options = {}) {
+        options.conditions = options.conditions || {};
+        // AsyncIterableIterator to iterate over blobs
+        const iter = this.listPageRangeDiffItems(offset, count, prevSnapshot, Object.assign({}, options));
+        return {
+            /**
+             * The next method, part of the iteration protocol
+             */
+            next() {
+                return iter.next();
+            },
+            /**
+             * The connection to the async iterator, part of the iteration protocol
+             */
+            [Symbol.asyncIterator]() {
+                return this;
+            },
+            /**
+             * Return an AsyncIterableIterator that works a page at a time
+             */
+            byPage: (settings = {}) => {
+                return this.listPageRangeDiffItemSegments(offset, count, prevSnapshot, settings.continuationToken, Object.assign({ maxPageSize: settings.maxPageSize }, options));
+            },
+        };
     }
     /**
      * Gets the collection of page ranges that differ between a specified snapshot and this page blob for managed disks.
