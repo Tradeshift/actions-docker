@@ -33,7 +33,7 @@ async function run(): Promise<void> {
       return;
     }
     if (inputs.useqemu) {
-      await qemu.setup();
+      await qemu.setup(registry);
     }
 
     await cache.restore(inputs);
