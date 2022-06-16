@@ -810,7 +810,7 @@ function run() {
                 return;
             }
             if (inputs.useqemu) {
-                yield qemu.setup();
+                yield qemu.setup(registry);
             }
             yield cache.restore(inputs);
             yield buildx.setup(inputs.builder);
@@ -874,14 +874,14 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.setup = void 0;
 const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(1514);
-function setup() {
+function setup(registry) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)(`🖥️ Setup qemu`);
         const res = yield (0, exec_1.getExecOutput)('docker', [
             'run',
             '--privileged',
             '--rm',
-            'eu.gcr.io/tradeshift-base/tonistiigi/binfmt:qemu-v6.1.0',
+            `${registry}/tradeshift-base/tonistiigi/binfmt:qemu-v6.1.0`,
             '--install',
             'all'
         ]);
