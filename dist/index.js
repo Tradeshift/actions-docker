@@ -881,7 +881,7 @@ function setup(registry) {
             'run',
             '--privileged',
             '--rm',
-            `${registry}/tradeshift-base/tonistiigi/binfmt:qemu-v6.1.0`,
+            `${registry}/tradeshift-base/tonistiigi/binfmt:qemu-v6.2.0`,
             '--install',
             'all'
         ]);
