@@ -209,13 +209,16 @@ exports.stop = stop;
 function createBuilder(name) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)(`🔨 Creating a new builder instance`);
+        const context = 'builders';
+        yield (0, exec_1.exec)('docker', ['context', 'create', context]);
         const args = [
             'buildx',
             'create',
             '--name',
             name,
             '--driver',
-            'docker-container'
+            'docker-container',
+            context
         ];
         yield (0, exec_1.exec)('docker', args);
         (0, core_1.endGroup)();
