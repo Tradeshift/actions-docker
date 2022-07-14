@@ -47,13 +47,17 @@ export async function stop(builderName: string): Promise<void> {
 async function createBuilder(name: string): Promise<void> {
   startGroup(`🔨 Creating a new builder instance`);
 
+  const context = 'builders';
+  await exec('docker', ['context', 'create', context]);
+
   const args = [
     'buildx',
     'create',
     '--name',
     name,
     '--driver',
-    'docker-container'
+    'docker-container',
+    context
   ];
   await exec('docker', args);
 
