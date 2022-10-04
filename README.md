@@ -21,7 +21,7 @@ repo. All that you need to do in that case is this.
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
@@ -42,7 +42,7 @@ In the following example we are building two images from `Dockerfile.a` and
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
@@ -64,7 +64,7 @@ example the folders are called `image-a` and `image-b`
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
@@ -88,7 +88,7 @@ master branch. In the following example we add the master and latests tags.
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
@@ -106,7 +106,7 @@ Github repo cache can be enabled for caching docker layers.
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
@@ -125,7 +125,7 @@ Build docker images against a specific list of platforms (processor architecures
 ```yaml
 jobs:
   docker:
-    runs-on: self-hosted
+    runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
       - uses: actions/checkout@v2
       - uses: tradeshift/actions-docker@v1
