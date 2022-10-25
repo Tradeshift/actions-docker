@@ -1025,17 +1025,18 @@ function restoreCache(paths, primaryKey, restoreKeys, options) {
             checkKey(key);
         }
         const compressionMethod = yield utils.getCompressionMethod();
-        // path are needed to compute version
-        const cacheEntry = yield cacheHttpClient.getCacheEntry(keys, paths, {
-            compressionMethod
-        });
-        if (!(cacheEntry === null || cacheEntry === void 0 ? void 0 : cacheEntry.archiveLocation)) {
-            // Cache not found
-            return undefined;
-        }
-        const archivePath = path.join(yield utils.createTempDirectory(), utils.getCacheFileName(compressionMethod));
-        core.debug(`Archive Path: ${archivePath}`);
+        let archivePath = '';
         try {
+            // path are needed to compute version
+            const cacheEntry = yield cacheHttpClient.getCacheEntry(keys, paths, {
+                compressionMethod
+            });
+            if (!(cacheEntry === null || cacheEntry === void 0 ? void 0 : cacheEntry.archiveLocation)) {
+                // Cache not found
+                return undefined;
+            }
+            archivePath = path.join(yield utils.createTempDirectory(), utils.getCacheFileName(compressionMethod));
+            core.debug(`Archive Path: ${archivePath}`);
             // Download the cache from the cache entry
             yield cacheHttpClient.downloadCache(cacheEntry.archiveLocation, archivePath, options);
             if (core.isDebug()) {
@@ -1045,6 +1046,17 @@ function restoreCache(paths, primaryKey, restoreKeys, options) {
             core.info(`Cache Size: ~${Math.round(archiveFileSize / (1024 * 1024))} MB (${archiveFileSize} B)`);
             yield tar_1.extractTar(archivePath, compressionMethod);
             core.info('Cache restored successfully');
+            return cacheEntry.cacheKey;
+        }
+        catch (error) {
+            const typedError = error;
+            if (typedError.name === ValidationError.name) {
+                throw error;
+            }
+            else {
+                // Supress all non-validation cache related errors because caching should be optional
+                core.warning(`Failed to restore: ${error.message}`);
+            }
         }
         finally {
             // Try to delete the archive to save space
@@ -1055,7 +1067,7 @@ function restoreCache(paths, primaryKey, restoreKeys, options) {
                 core.debug(`Failed to delete archive: ${error}`);
             }
         }
-        return cacheEntry.cacheKey;
+        return undefined;
     });
 }
 exports.restoreCache = restoreCache;
@@ -1073,7 +1085,7 @@ function saveCache(paths, key, options) {
         checkPaths(paths);
         checkKey(key);
         const compressionMethod = yield utils.getCompressionMethod();
-        let cacheId = null;
+        let cacheId = -1;
         const cachePaths = yield utils.resolvePaths(paths);
         core.debug('Cache Paths:');
         core.debug(`${JSON.stringify(cachePaths)}`);
@@ -1111,6 +1123,18 @@ function saveCache(paths, key, options) {
             }
             core.debug(`Saving Cache (ID: ${cacheId})`);
             yield cacheHttpClient.saveCache(cacheId, archivePath, options);
+        }
+        catch (error) {
+            const typedError = error;
+            if (typedError.name === ValidationError.name) {
+                throw error;
+            }
+            else if (typedError.name === ReserveCacheError.name) {
+                core.info(`Failed to save: ${typedError.message}`);
+            }
+            else {
+                core.warning(`Failed to save: ${typedError.message}`);
+            }
         }
         finally {
             // Try to delete the archive to save space
@@ -1436,7 +1460,13 @@ function resolvePaths(patterns) {
                     .replace(new RegExp(`\\${path.sep}`, 'g'), '/');
                 core.debug(`Matched: ${relativeFile}`);
                 // Paths are made relative so the tar entries are all relative to the root of the workspace.
-                paths.push(`${relativeFile}`);
+                if (relativeFile === '') {
+                    // path.relative returns empty string if workspace and file are equal
+                    paths.push('.');
+                }
+                else {
+                    paths.push(`${relativeFile}`);
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
@@ -1594,6 +1624,7 @@ const util = __importStar(__nccwpck_require__(1669));
 const utils = __importStar(__nccwpck_require__(1518));
 const constants_1 = __nccwpck_require__(8840);
 const requestUtils_1 = __nccwpck_require__(3981);
+const abort_controller_1 = __nccwpck_require__(2557);
 /**
  * Pipes the body of a HTTP response to a stream
  *
@@ -1777,15 +1808,24 @@ function downloadCacheStorageSDK(archiveLocation, archivePath, options) {
             const fd = fs.openSync(archivePath, 'w');
             try {
                 downloadProgress.startDisplayTimer();
+                const controller = new abort_controller_1.AbortController();
+                const abortSignal = controller.signal;
                 while (!downloadProgress.isDone()) {
                     const segmentStart = downloadProgress.segmentOffset + downloadProgress.segmentSize;
                     const segmentSize = Math.min(maxSegmentSize, contentLength - segmentStart);
                     downloadProgress.nextSegment(segmentSize);
-                    const result = yield client.downloadToBuffer(segmentStart, segmentSize, {
+                    const result = yield promiseWithTimeout(options.segmentTimeoutInMs || 3600000, client.downloadToBuffer(segmentStart, segmentSize, {
+                        abortSignal,
                         concurrency: options.downloadConcurrency,
                         onProgress: downloadProgress.onProgress()
-                    });
-                    fs.writeFileSync(fd, result);
+                    }));
+                    if (result === 'timeout') {
+                        controller.abort();
+                        throw new Error('Aborting cache download as the download time exceeded the timeout.');
+                    }
+                    else if (Buffer.isBuffer(result)) {
+                        fs.writeFileSync(fd, result);
+                    }
                 }
             }
             finally {
@@ -1796,6 +1836,16 @@ function downloadCacheStorageSDK(archiveLocation, archivePath, options) {
     });
 }
 exports.downloadCacheStorageSDK = downloadCacheStorageSDK;
+const promiseWithTimeout = (timeoutMs, promise) => __awaiter(void 0, void 0, void 0, function* () {
+    let timeoutHandle;
+    const timeoutPromise = new Promise(resolve => {
+        timeoutHandle = setTimeout(() => resolve('timeout'), timeoutMs);
+    });
+    return Promise.race([promise, timeoutPromise]).then(result => {
+        clearTimeout(timeoutHandle);
+        return result;
+    });
+});
 //# sourceMappingURL=downloadUtils.js.map
 
 /***/ }),
@@ -1955,6 +2005,7 @@ const fs_1 = __nccwpck_require__(5747);
 const path = __importStar(__nccwpck_require__(5622));
 const utils = __importStar(__nccwpck_require__(1518));
 const constants_1 = __nccwpck_require__(8840);
+const IS_WINDOWS = process.platform === 'win32';
 function getTarPath(args, compressionMethod) {
     return __awaiter(this, void 0, void 0, function* () {
         switch (process.platform) {
@@ -2002,26 +2053,43 @@ function getWorkingDirectory() {
     var _a;
     return (_a = process.env['GITHUB_WORKSPACE']) !== null && _a !== void 0 ? _a : process.cwd();
 }
+// Common function for extractTar and listTar to get the compression method
+function getCompressionProgram(compressionMethod) {
+    // -d: Decompress.
+    // unzstd is equivalent to 'zstd -d'
+    // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
+    // Using 30 here because we also support 32-bit self-hosted runners.
+    switch (compressionMethod) {
+        case constants_1.CompressionMethod.Zstd:
+            return [
+                '--use-compress-program',
+                IS_WINDOWS ? 'zstd -d --long=30' : 'unzstd --long=30'
+            ];
+        case constants_1.CompressionMethod.ZstdWithoutLong:
+            return ['--use-compress-program', IS_WINDOWS ? 'zstd -d' : 'unzstd'];
+        default:
+            return ['-z'];
+    }
+}
+function listTar(archivePath, compressionMethod) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const args = [
+            ...getCompressionProgram(compressionMethod),
+            '-tf',
+            archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/'),
+            '-P'
+        ];
+        yield execTar(args, compressionMethod);
+    });
+}
+exports.listTar = listTar;
 function extractTar(archivePath, compressionMethod) {
     return __awaiter(this, void 0, void 0, function* () {
         // Create directory to extract tar into
         const workingDirectory = getWorkingDirectory();
         yield io.mkdirP(workingDirectory);
-        // --d: Decompress.
-        // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
-        // Using 30 here because we also support 32-bit self-hosted runners.
-        function getCompressionProgram() {
-            switch (compressionMethod) {
-                case constants_1.CompressionMethod.Zstd:
-                    return ['--use-compress-program', 'zstd -d --long=30'];
-                case constants_1.CompressionMethod.ZstdWithoutLong:
-                    return ['--use-compress-program', 'zstd -d'];
-                default:
-                    return ['-z'];
-            }
-        }
         const args = [
-            ...getCompressionProgram(),
+            ...getCompressionProgram(compressionMethod),
             '-xf',
             archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/'),
             '-P',
@@ -2040,15 +2108,19 @@ function createTar(archiveFolder, sourceDirectories, compressionMethod) {
         fs_1.writeFileSync(path.join(archiveFolder, manifestFilename), sourceDirectories.join('\n'));
         const workingDirectory = getWorkingDirectory();
         // -T#: Compress using # working thread. If # is 0, attempt to detect and use the number of physical CPU cores.
+        // zstdmt is equivalent to 'zstd -T0'
         // --long=#: Enables long distance matching with # bits. Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
         // Using 30 here because we also support 32-bit self-hosted runners.
         // Long range mode is added to zstd in v1.3.2 release, so we will not use --long in older version of zstd.
         function getCompressionProgram() {
             switch (compressionMethod) {
                 case constants_1.CompressionMethod.Zstd:
-                    return ['--use-compress-program', 'zstd -T0 --long=30'];
+                    return [
+                        '--use-compress-program',
+                        IS_WINDOWS ? 'zstd -T0 --long=30' : 'zstdmt --long=30'
+                    ];
                 case constants_1.CompressionMethod.ZstdWithoutLong:
-                    return ['--use-compress-program', 'zstd -T0'];
+                    return ['--use-compress-program', IS_WINDOWS ? 'zstd -T0' : 'zstdmt'];
                 default:
                     return ['-z'];
             }
@@ -2070,32 +2142,6 @@ function createTar(archiveFolder, sourceDirectories, compressionMethod) {
     });
 }
 exports.createTar = createTar;
-function listTar(archivePath, compressionMethod) {
-    return __awaiter(this, void 0, void 0, function* () {
-        // --d: Decompress.
-        // --long=#: Enables long distance matching with # bits.
-        // Maximum is 30 (1GB) on 32-bit OS and 31 (2GB) on 64-bit.
-        // Using 30 here because we also support 32-bit self-hosted runners.
-        function getCompressionProgram() {
-            switch (compressionMethod) {
-                case constants_1.CompressionMethod.Zstd:
-                    return ['--use-compress-program', 'zstd -d --long=30'];
-                case constants_1.CompressionMethod.ZstdWithoutLong:
-                    return ['--use-compress-program', 'zstd -d'];
-                default:
-                    return ['-z'];
-            }
-        }
-        const args = [
-            ...getCompressionProgram(),
-            '-tf',
-            archivePath.replace(new RegExp(`\\${path.sep}`, 'g'), '/'),
-            '-P'
-        ];
-        yield execTar(args, compressionMethod);
-    });
-}
-exports.listTar = listTar;
 //# sourceMappingURL=tar.js.map
 
 /***/ }),
@@ -2146,7 +2192,8 @@ function getDownloadOptions(copy) {
     const result = {
         useAzureSdk: true,
         downloadConcurrency: 8,
-        timeoutInMs: 30000
+        timeoutInMs: 30000,
+        segmentTimeoutInMs: 3600000
     };
     if (copy) {
         if (typeof copy.useAzureSdk === 'boolean') {
@@ -2158,10 +2205,21 @@ function getDownloadOptions(copy) {
         if (typeof copy.timeoutInMs === 'number') {
             result.timeoutInMs = copy.timeoutInMs;
         }
+        if (typeof copy.segmentTimeoutInMs === 'number') {
+            result.segmentTimeoutInMs = copy.segmentTimeoutInMs;
+        }
+    }
+    const segmentDownloadTimeoutMins = process.env['SEGMENT_DOWNLOAD_TIMEOUT_MINS'];
+    if (segmentDownloadTimeoutMins &&
+        !isNaN(Number(segmentDownloadTimeoutMins)) &&
+        isFinite(Number(segmentDownloadTimeoutMins))) {
+        result.segmentTimeoutInMs = Number(segmentDownloadTimeoutMins) * 60 * 1000;
     }
     core.debug(`Use Azure SDK: ${result.useAzureSdk}`);
     core.debug(`Download concurrency: ${result.downloadConcurrency}`);
     core.debug(`Request timeout (ms): ${result.timeoutInMs}`);
+    core.debug(`Cache segment download timeout mins env var: ${process.env['SEGMENT_DOWNLOAD_TIMEOUT_MINS']}`);
+    core.debug(`Segment download timeout (ms): ${result.segmentTimeoutInMs}`);
     return result;
 }
 exports.getDownloadOptions = getDownloadOptions;
@@ -4894,7 +4952,6 @@ const file_command_1 = __nccwpck_require__(717);
 const utils_1 = __nccwpck_require__(5278);
 const os = __importStar(__nccwpck_require__(2087));
 const path = __importStar(__nccwpck_require__(5622));
-const uuid_1 = __nccwpck_require__(5840);
 const oidc_utils_1 = __nccwpck_require__(8041);
 /**
  * The code to exit an action
@@ -4924,20 +4981,9 @@ function exportVariable(name, val) {
     process.env[name] = convertedVal;
     const filePath = process.env['GITHUB_ENV'] || '';
     if (filePath) {
-        const delimiter = `ghadelimiter_${uuid_1.v4()}`;
-        // These should realistically never happen, but just in case someone finds a way to exploit uuid generation let's not allow keys or values that contain the delimiter.
-        if (name.includes(delimiter)) {
-            throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
-        }
-        if (convertedVal.includes(delimiter)) {
-            throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
-        }
-        const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
-        file_command_1.issueCommand('ENV', commandValue);
+        return file_command_1.issueFileCommand('ENV', file_command_1.prepareKeyValueMessage(name, val));
     }
-    else {
-        command_1.issueCommand('set-env', { name }, convertedVal);
-    }
+    command_1.issueCommand('set-env', { name }, convertedVal);
 }
 exports.exportVariable = exportVariable;
 /**
@@ -4955,7 +5001,7 @@ exports.setSecret = setSecret;
 function addPath(inputPath) {
     const filePath = process.env['GITHUB_PATH'] || '';
     if (filePath) {
-        file_command_1.issueCommand('PATH', inputPath);
+        file_command_1.issueFileCommand('PATH', inputPath);
     }
     else {
         command_1.issueCommand('add-path', {}, inputPath);
@@ -4995,7 +5041,10 @@ function getMultilineInput(name, options) {
     const inputs = getInput(name, options)
         .split('\n')
         .filter(x => x !== '');
-    return inputs;
+    if (options && options.trimWhitespace === false) {
+        return inputs;
+    }
+    return inputs.map(input => input.trim());
 }
 exports.getMultilineInput = getMultilineInput;
 /**
@@ -5028,8 +5077,12 @@ exports.getBooleanInput = getBooleanInput;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function setOutput(name, value) {
+    const filePath = process.env['GITHUB_OUTPUT'] || '';
+    if (filePath) {
+        return file_command_1.issueFileCommand('OUTPUT', file_command_1.prepareKeyValueMessage(name, value));
+    }
     process.stdout.write(os.EOL);
-    command_1.issueCommand('set-output', { name }, value);
+    command_1.issueCommand('set-output', { name }, utils_1.toCommandValue(value));
 }
 exports.setOutput = setOutput;
 /**
@@ -5158,7 +5211,11 @@ exports.group = group;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function saveState(name, value) {
-    command_1.issueCommand('save-state', { name }, value);
+    const filePath = process.env['GITHUB_STATE'] || '';
+    if (filePath) {
+        return file_command_1.issueFileCommand('STATE', file_command_1.prepareKeyValueMessage(name, value));
+    }
+    command_1.issueCommand('save-state', { name }, utils_1.toCommandValue(value));
 }
 exports.saveState = saveState;
 /**
@@ -5224,13 +5281,14 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.issueCommand = void 0;
+exports.prepareKeyValueMessage = exports.issueFileCommand = void 0;
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fs = __importStar(__nccwpck_require__(5747));
 const os = __importStar(__nccwpck_require__(2087));
+const uuid_1 = __nccwpck_require__(5840);
 const utils_1 = __nccwpck_require__(5278);
-function issueCommand(command, message) {
+function issueFileCommand(command, message) {
     const filePath = process.env[`GITHUB_${command}`];
     if (!filePath) {
         throw new Error(`Unable to find environment variable for file command ${command}`);
@@ -5242,7 +5300,22 @@ function issueCommand(command, message) {
         encoding: 'utf8'
     });
 }
-exports.issueCommand = issueCommand;
+exports.issueFileCommand = issueFileCommand;
+function prepareKeyValueMessage(key, value) {
+    const delimiter = `ghadelimiter_${uuid_1.v4()}`;
+    const convertedValue = utils_1.toCommandValue(value);
+    // These should realistically never happen, but just in case someone finds a
+    // way to exploit uuid generation let's not allow keys or values that contain
+    // the delimiter.
+    if (key.includes(delimiter)) {
+        throw new Error(`Unexpected input: name should not contain the delimiter "${delimiter}"`);
+    }
+    if (convertedValue.includes(delimiter)) {
+        throw new Error(`Unexpected input: value should not contain the delimiter "${delimiter}"`);
+    }
+    return `${key}<<${delimiter}${os.EOL}${convertedValue}${os.EOL}${delimiter}`;
+}
+exports.prepareKeyValueMessage = prepareKeyValueMessage;
 //# sourceMappingURL=file-command.js.map
 
 /***/ }),
@@ -7416,7 +7489,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getOctokitOptions = exports.GitHub = exports.context = void 0;
+exports.getOctokitOptions = exports.GitHub = exports.defaults = exports.context = void 0;
 const Context = __importStar(__nccwpck_require__(4087));
 const Utils = __importStar(__nccwpck_require__(7914));
 // octokit + plugins
@@ -7425,13 +7498,13 @@ const plugin_rest_endpoint_methods_1 = __nccwpck_require__(3044);
 const plugin_paginate_rest_1 = __nccwpck_require__(4193);
 exports.context = new Context.Context();
 const baseUrl = Utils.getApiBaseUrl();
-const defaults = {
+exports.defaults = {
     baseUrl,
     request: {
         agent: Utils.getProxyAgent(baseUrl)
     }
 };
-exports.GitHub = core_1.Octokit.plugin(plugin_rest_endpoint_methods_1.restEndpointMethods, plugin_paginate_rest_1.paginateRest).defaults(defaults);
+exports.GitHub = core_1.Octokit.plugin(plugin_rest_endpoint_methods_1.restEndpointMethods, plugin_paginate_rest_1.paginateRest).defaults(exports.defaults);
 /**
  * Convience function to correctly format Octokit Options to pass into the constructor.
  *
@@ -22303,8 +22376,7 @@ function setStateError(inputs) {
     };
 }
 function processOperationStatus(result) {
-    const { state, stateProxy, status } = result;
-    logger.verbose(`LRO: Status:\n\tPolling from: ${state.config.operationLocation}\n\tOperation status: ${status}\n\tPolling status: ${terminalStates.includes(status) ? "Stopped" : "Running"}`);
+    const { state, stateProxy, status, isDone, processResult, response, setErrorAsResult } = result;
     switch (status) {
         case "succeeded": {
             stateProxy.setSucceeded(state);
@@ -22320,6 +22392,15 @@ function processOperationStatus(result) {
             break;
         }
     }
+    if ((isDone === null || isDone === void 0 ? void 0 : isDone(response, state)) ||
+        (isDone === undefined &&
+            ["succeeded", "canceled"].concat(setErrorAsResult ? [] : ["failed"]).includes(status))) {
+        stateProxy.setResult(state, buildResult({
+            response,
+            state,
+            processResult,
+        }));
+    }
 }
 function buildResult(inputs) {
     const { processResult, response, state } = inputs;
@@ -22329,7 +22410,7 @@ function buildResult(inputs) {
  * Initiates the long-running operation.
  */
 async function initOperation(inputs) {
-    const { init, stateProxy, processResult, getOperationStatus, withOperationLocation } = inputs;
+    const { init, stateProxy, processResult, getOperationStatus, withOperationLocation, setErrorAsResult, } = inputs;
     const { operationLocation, resourceLocation, metadata, response } = await init();
     if (operationLocation)
         withOperationLocation === null || withOperationLocation === void 0 ? void 0 : withOperationLocation(operationLocation, false);
@@ -22340,15 +22421,8 @@ async function initOperation(inputs) {
     };
     logger.verbose(`LRO: Operation description:`, config);
     const state = stateProxy.initState(config);
-    const status = getOperationStatus(response, state);
-    if (status === "succeeded" || operationLocation === undefined) {
-        stateProxy.setSucceeded(state);
-        stateProxy.setResult(state, buildResult({
-            response,
-            state,
-            processResult,
-        }));
-    }
+    const status = getOperationStatus({ response, state, operationLocation });
+    processOperationStatus({ state, status, stateProxy, response, setErrorAsResult, processResult });
     return state;
 }
 async function pollOperationHelper(inputs) {
@@ -22358,11 +22432,7 @@ async function pollOperationHelper(inputs) {
         stateProxy,
     }));
     const status = getOperationStatus(response, state);
-    processOperationStatus({
-        status,
-        state,
-        stateProxy,
-    });
+    logger.verbose(`LRO: Status:\n\tPolling from: ${state.config.operationLocation}\n\tOperation status: ${status}\n\tPolling status: ${terminalStates.includes(status) ? "Stopped" : "Running"}`);
     if (status === "succeeded") {
         const resourceLocation = getResourceLocation(response, state);
         if (resourceLocation !== undefined) {
@@ -22376,7 +22446,7 @@ async function pollOperationHelper(inputs) {
 }
 /** Polls the long-running operation. */
 async function pollOperation(inputs) {
-    const { poll, state, stateProxy, options, getOperationStatus, getResourceLocation, getOperationLocation, withOperationLocation, getPollingInterval, processResult, updateState, setDelay, isDone, } = inputs;
+    const { poll, state, stateProxy, options, getOperationStatus, getResourceLocation, getOperationLocation, withOperationLocation, getPollingInterval, processResult, updateState, setDelay, isDone, setErrorAsResult, } = inputs;
     const { operationLocation } = state.config;
     if (operationLocation !== undefined) {
         const { response, status } = await pollOperationHelper({
@@ -22388,15 +22458,16 @@ async function pollOperation(inputs) {
             getResourceLocation,
             options,
         });
-        if ((isDone === null || isDone === void 0 ? void 0 : isDone(response, state)) ||
-            (isDone === undefined && ["succeeded", "canceled"].includes(status))) {
-            stateProxy.setResult(state, buildResult({
-                response,
-                state,
-                processResult,
-            }));
-        }
-        else {
+        processOperationStatus({
+            status,
+            response,
+            state,
+            stateProxy,
+            isDone,
+            processResult,
+            setErrorAsResult,
+        });
+        if (!terminalStates.includes(status)) {
             const intervalInMs = getPollingInterval === null || getPollingInterval === void 0 ? void 0 : getPollingInterval(response);
             if (intervalInMs)
                 setDelay(intervalInMs);
@@ -22487,15 +22558,21 @@ function inferLroMode(inputs) {
         return undefined;
     }
 }
-function transformStatus(status) {
-    switch (status === null || status === void 0 ? void 0 : status.toLowerCase()) {
+function transformStatus(inputs) {
+    const { status, statusCode } = inputs;
+    if (typeof status !== "string" && status !== undefined) {
+        throw new Error(`Polling was unsuccessful. Expected status to have a string value or no value but it has instead: ${status}. This doesn't necessarily indicate the operation has failed. Check your Azure subscription or resource status for more information.`);
+    }
+    switch (status === null || status === void 0 ? void 0 : status.toLocaleLowerCase()) {
         case undefined:
+            return toOperationStatus(statusCode);
         case "succeeded":
             return "succeeded";
         case "failed":
             return "failed";
         case "running":
         case "accepted":
+        case "started":
         case "canceling":
         case "cancelling":
             return "running";
@@ -22511,13 +22588,13 @@ function transformStatus(status) {
 function getStatus(rawResponse) {
     var _a;
     const { status } = (_a = rawResponse.body) !== null && _a !== void 0 ? _a : {};
-    return transformStatus(status);
+    return transformStatus({ status, statusCode: rawResponse.statusCode });
 }
 function getProvisioningState(rawResponse) {
     var _a, _b;
     const { properties, provisioningState } = (_a = rawResponse.body) !== null && _a !== void 0 ? _a : {};
-    const state = (_b = properties === null || properties === void 0 ? void 0 : properties.provisioningState) !== null && _b !== void 0 ? _b : provisioningState;
-    return transformStatus(state);
+    const status = (_b = properties === null || properties === void 0 ? void 0 : properties.provisioningState) !== null && _b !== void 0 ? _b : provisioningState;
+    return transformStatus({ status, statusCode: rawResponse.statusCode });
 }
 function toOperationStatus(statusCode) {
     if (statusCode === 202) {
@@ -22549,11 +22626,28 @@ function calculatePollingIntervalFromDate(retryAfterDate) {
     }
     return undefined;
 }
+function getStatusFromInitialResponse(inputs) {
+    const { response, state, operationLocation } = inputs;
+    function helper() {
+        var _a;
+        const mode = (_a = state.config.metadata) === null || _a === void 0 ? void 0 : _a["mode"];
+        switch (mode) {
+            case undefined:
+                return toOperationStatus(response.rawResponse.statusCode);
+            case "Body":
+                return getOperationStatus(response, state);
+            default:
+                return "running";
+        }
+    }
+    const status = helper();
+    return status === "running" && operationLocation === undefined ? "succeeded" : status;
+}
 /**
  * Initiates the long-running operation.
  */
 async function initHttpOperation(inputs) {
-    const { stateProxy, resourceLocationConfig, processResult, lro } = inputs;
+    const { stateProxy, resourceLocationConfig, processResult, lro, setErrorAsResult } = inputs;
     return initOperation({
         init: async () => {
             const response = await lro.sendInitialRequest();
@@ -22569,14 +22663,8 @@ async function initHttpOperation(inputs) {
         processResult: processResult
             ? ({ flatResponse }, state) => processResult(flatResponse, state)
             : ({ flatResponse }) => flatResponse,
-        getOperationStatus: (response, state) => {
-            var _a;
-            const mode = (_a = state.config.metadata) === null || _a === void 0 ? void 0 : _a["mode"];
-            return mode === undefined ||
-                (mode === "Body" && getOperationStatus(response, state) === "succeeded")
-                ? "succeeded"
-                : "running";
-        },
+        getOperationStatus: getStatusFromInitialResponse,
+        setErrorAsResult,
     });
 }
 function getOperationLocation({ rawResponse }, state) {
@@ -22612,7 +22700,7 @@ function getOperationStatus({ rawResponse }, state) {
             return getProvisioningState(rawResponse);
         }
         default:
-            throw new Error(`Unexpected operation mode: ${mode}`);
+            throw new Error(`Internal error: Unexpected operation mode: ${mode}`);
     }
 }
 function getResourceLocation({ flatResponse }, state) {
@@ -22626,7 +22714,7 @@ function getResourceLocation({ flatResponse }, state) {
 }
 /** Polls the long-running operation. */
 async function pollHttpOperation(inputs) {
-    const { lro, stateProxy, options, processResult, updateState, setDelay, state } = inputs;
+    const { lro, stateProxy, options, processResult, updateState, setDelay, state, setErrorAsResult, } = inputs;
     return pollOperation({
         state,
         stateProxy,
@@ -22645,6 +22733,7 @@ async function pollHttpOperation(inputs) {
          * references an inner this, so we need to preserve a reference to it.
          */
         poll: async (location, inputOptions) => lro.sendPollRequest(location, inputOptions),
+        setErrorAsResult,
     });
 }
 
@@ -22725,7 +22814,7 @@ const createStateProxy$1 = () => ({
  * Returns a poller factory.
  */
 function buildCreatePoller(inputs) {
-    const { getOperationLocation, getStatusFromInitialResponse, getStatusFromPollResponse, getResourceLocation, getPollingInterval, } = inputs;
+    const { getOperationLocation, getStatusFromInitialResponse, getStatusFromPollResponse, getResourceLocation, getPollingInterval, resolveOnUnsuccessful, } = inputs;
     return async ({ init, poll }, options) => {
         const { processResult, updateState, withOperationLocation: withOperationLocationCallback, intervalInMs = POLL_INTERVAL_IN_MS, restoreFrom, } = options || {};
         const stateProxy = createStateProxy$1();
@@ -22749,6 +22838,7 @@ function buildCreatePoller(inputs) {
                 processResult,
                 getOperationStatus: getStatusFromInitialResponse,
                 withOperationLocation,
+                setErrorAsResult: !resolveOnUnsuccessful,
             });
         let resultPromise;
         let cancelJob;
@@ -22792,10 +22882,14 @@ function buildCreatePoller(inputs) {
                         return poller.getResult();
                     }
                     case "canceled": {
-                        throw new Error("Operation was canceled");
+                        if (!resolveOnUnsuccessful)
+                            throw new Error("Operation was canceled");
+                        return poller.getResult();
                     }
                     case "failed": {
-                        throw state.error;
+                        if (!resolveOnUnsuccessful)
+                            throw state.error;
+                        return poller.getResult();
                     }
                     case "notStarted":
                     case "running": {
@@ -22822,12 +22916,13 @@ function buildCreatePoller(inputs) {
                     setDelay: (pollIntervalInMs) => {
                         currentPollIntervalInMs = pollIntervalInMs;
                     },
+                    setErrorAsResult: !resolveOnUnsuccessful,
                 });
                 await handleProgressEvents();
-                if (state.status === "canceled") {
+                if (state.status === "canceled" && !resolveOnUnsuccessful) {
                     throw new Error("Operation was canceled");
                 }
-                if (state.status === "failed") {
+                if (state.status === "failed" && !resolveOnUnsuccessful) {
                     throw state.error;
                 }
             },
@@ -22844,20 +22939,14 @@ function buildCreatePoller(inputs) {
  * @returns an initialized poller
  */
 async function createHttpPoller(lro, options) {
-    const { resourceLocationConfig, intervalInMs, processResult, restoreFrom, updateState, withOperationLocation, } = options || {};
+    const { resourceLocationConfig, intervalInMs, processResult, restoreFrom, updateState, withOperationLocation, resolveOnUnsuccessful = false, } = options || {};
     return buildCreatePoller({
-        getStatusFromInitialResponse: (response, state) => {
-            var _a;
-            const mode = (_a = state.config.metadata) === null || _a === void 0 ? void 0 : _a["mode"];
-            return mode === undefined ||
-                (mode === "Body" && getOperationStatus(response, state) === "succeeded")
-                ? "succeeded"
-                : "running";
-        },
+        getStatusFromInitialResponse,
         getStatusFromPollResponse: getOperationStatus,
         getOperationLocation,
         getResourceLocation,
         getPollingInterval: parseRetryAfter,
+        resolveOnUnsuccessful,
     })({
         init: async () => {
             const response = await lro.sendInitialRequest();
@@ -22900,9 +22989,10 @@ const createStateProxy = () => ({
     isSucceeded: (state) => Boolean(state.isCompleted && !state.isCancelled && !state.error),
 });
 class GenericPollOperation {
-    constructor(state, lro, lroResourceLocationConfig, processResult, updateState, isDone) {
+    constructor(state, lro, setErrorAsResult, lroResourceLocationConfig, processResult, updateState, isDone) {
         this.state = state;
         this.lro = lro;
+        this.setErrorAsResult = setErrorAsResult;
         this.lroResourceLocationConfig = lroResourceLocationConfig;
         this.processResult = processResult;
         this.updateState = updateState;
@@ -22920,11 +23010,12 @@ class GenericPollOperation {
                 stateProxy,
                 resourceLocationConfig: this.lroResourceLocationConfig,
                 processResult: this.processResult,
+                setErrorAsResult: this.setErrorAsResult,
             })));
         }
         const updateState = this.updateState;
         const isDone = this.isDone;
-        if (!this.state.isCompleted) {
+        if (!this.state.isCompleted && this.state.error === undefined) {
             await pollHttpOperation({
                 lro: this.lro,
                 state: this.state,
@@ -22940,6 +23031,7 @@ class GenericPollOperation {
                 setDelay: (intervalInMs) => {
                     this.pollerConfig.intervalInMs = intervalInMs;
                 },
+                setErrorAsResult: this.setErrorAsResult,
             });
         }
         (_a = options === null || options === void 0 ? void 0 : options.fireProgress) === null || _a === void 0 ? void 0 : _a.call(options, this.state);
@@ -23112,6 +23204,8 @@ class Poller {
      * @param operation - Must contain the basic properties of `PollOperation<State, TResult>`.
      */
     constructor(operation) {
+        /** controls whether to throw an error if the operation failed or was canceled. */
+        this.resolveOnUnsuccessful = false;
         this.stopped = true;
         this.pollProgressCallbacks = [];
         this.operation = operation;
@@ -23149,15 +23243,10 @@ class Poller {
      */
     async pollOnce(options = {}) {
         if (!this.isDone()) {
-            try {
-                this.operation = await this.operation.update({
-                    abortSignal: options.abortSignal,
-                    fireProgress: this.fireProgress.bind(this),
-                });
-            }
-            catch (e) {
-                this.operation.state.error = e;
-            }
+            this.operation = await this.operation.update({
+                abortSignal: options.abortSignal,
+                fireProgress: this.fireProgress.bind(this),
+            });
         }
         this.processUpdatedState();
     }
@@ -23201,22 +23290,26 @@ class Poller {
     processUpdatedState() {
         if (this.operation.state.error) {
             this.stopped = true;
-            this.reject(this.operation.state.error);
-            throw this.operation.state.error;
+            if (!this.resolveOnUnsuccessful) {
+                this.reject(this.operation.state.error);
+                throw this.operation.state.error;
+            }
         }
         if (this.operation.state.isCancelled) {
             this.stopped = true;
-            const error = new PollerCancelledError("Operation was canceled");
-            this.reject(error);
-            throw error;
+            if (!this.resolveOnUnsuccessful) {
+                const error = new PollerCancelledError("Operation was canceled");
+                this.reject(error);
+                throw error;
+            }
         }
-        else if (this.isDone() && this.resolve) {
+        if (this.isDone() && this.resolve) {
             // If the poller has finished polling, this means we now have a result.
             // However, it can be the case that TResult is instantiated to void, so
             // we are not expecting a result anyway. To assert that we might not
             // have a result eventually after finishing polling, we cast the result
             // to TResult.
-            this.resolve(this.operation.state.result);
+            this.resolve(this.getResult());
         }
     }
     /**
@@ -23361,12 +23454,13 @@ class Poller {
  */
 class LroEngine extends Poller {
     constructor(lro, options) {
-        const { intervalInMs = POLL_INTERVAL_IN_MS, resumeFrom } = options || {};
+        const { intervalInMs = POLL_INTERVAL_IN_MS, resumeFrom, resolveOnUnsuccessful = false, isDone, lroResourceLocationConfig, processResult, updateState, } = options || {};
         const state = resumeFrom
             ? deserializeState(resumeFrom)
             : {};
-        const operation = new GenericPollOperation(state, lro, options === null || options === void 0 ? void 0 : options.lroResourceLocationConfig, options === null || options === void 0 ? void 0 : options.processResult, options === null || options === void 0 ? void 0 : options.updateState, options === null || options === void 0 ? void 0 : options.isDone);
+        const operation = new GenericPollOperation(state, lro, !resolveOnUnsuccessful, lroResourceLocationConfig, processResult, updateState, isDone);
         super(operation);
+        this.resolveOnUnsuccessful = resolveOnUnsuccessful;
         this.config = { intervalInMs: intervalInMs };
         operation.setPollerConfig(this.config);
     }
@@ -24033,6 +24127,7 @@ exports.setSpanContext = setSpanContext;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
+var abortController = __nccwpck_require__(2557);
 var crypto = __nccwpck_require__(6417);
 
 // Copyright (c) Microsoft Corporation.
@@ -24046,12 +24141,76 @@ const isNode = typeof process !== "undefined" && Boolean(process.version) && Boo
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
 /**
+ * Helper TypeGuard that checks if something is defined or not.
+ * @param thing - Anything
+ */
+function isDefined(thing) {
+    return typeof thing !== "undefined" && thing !== null;
+}
+/**
+ * Helper TypeGuard that checks if the input is an object with the specified properties.
+ * @param thing - Anything.
+ * @param properties - The name of the properties that should appear in the object.
+ */
+function isObjectWithProperties(thing, properties) {
+    if (!isDefined(thing) || typeof thing !== "object") {
+        return false;
+    }
+    for (const property of properties) {
+        if (!objectHasProperty(thing, property)) {
+            return false;
+        }
+    }
+    return true;
+}
+/**
+ * Helper TypeGuard that checks if the input is an object with the specified property.
+ * @param thing - Any object.
+ * @param property - The name of the property that should appear in the object.
+ */
+function objectHasProperty(thing, property) {
+    return (isDefined(thing) && typeof thing === "object" && property in thing);
+}
+
+// Copyright (c) Microsoft Corporation.
+const StandardAbortMessage = "The operation was aborted.";
+/**
  * A wrapper for setTimeout that resolves a promise after timeInMs milliseconds.
  * @param timeInMs - The number of milliseconds to be delayed.
+ * @param options - The options for delay - currently abort options
  * @returns Promise that is resolved after timeInMs
  */
-function delay(timeInMs) {
-    return new Promise((resolve) => setTimeout(() => resolve(), timeInMs));
+function delay(timeInMs, options) {
+    return new Promise((resolve, reject) => {
+        let timer = undefined;
+        let onAborted = undefined;
+        const rejectOnAbort = () => {
+            var _a;
+            return reject(new abortController.AbortError((_a = options === null || options === void 0 ? void 0 : options.abortErrorMsg) !== null && _a !== void 0 ? _a : StandardAbortMessage));
+        };
+        const removeListeners = () => {
+            if ((options === null || options === void 0 ? void 0 : options.abortSignal) && onAborted) {
+                options.abortSignal.removeEventListener("abort", onAborted);
+            }
+        };
+        onAborted = () => {
+            if (isDefined(timer)) {
+                clearTimeout(timer);
+            }
+            removeListeners();
+            return rejectOnAbort();
+        };
+        if ((options === null || options === void 0 ? void 0 : options.abortSignal) && options.abortSignal.aborted) {
+            return rejectOnAbort();
+        }
+        timer = setTimeout(() => {
+            removeListeners();
+            resolve();
+        }, timeInMs);
+        if (options === null || options === void 0 ? void 0 : options.abortSignal) {
+            options.abortSignal.addEventListener("abort", onAborted);
+        }
+    });
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -24147,40 +24306,6 @@ async function computeSha256Hmac(key, stringToSign, encoding) {
  */
 async function computeSha256Hash(content, encoding) {
     return crypto.createHash("sha256").update(content).digest(encoding);
-}
-
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT license.
-/**
- * Helper TypeGuard that checks if something is defined or not.
- * @param thing - Anything
- */
-function isDefined(thing) {
-    return typeof thing !== "undefined" && thing !== null;
-}
-/**
- * Helper TypeGuard that checks if the input is an object with the specified properties.
- * @param thing - Anything.
- * @param properties - The name of the properties that should appear in the object.
- */
-function isObjectWithProperties(thing, properties) {
-    if (!isDefined(thing) || typeof thing !== "object") {
-        return false;
-    }
-    for (const property of properties) {
-        if (!objectHasProperty(thing, property)) {
-            return false;
-        }
-    }
-    return true;
-}
-/**
- * Helper TypeGuard that checks if the input is an object with the specified property.
- * @param thing - Any object.
- * @param property - The name of the property that should appear in the object.
- */
-function objectHasProperty(thing, property) {
-    return (isDefined(thing) && typeof thing === "object" && property in thing);
 }
 
 exports.computeSha256Hash = computeSha256Hash;
@@ -32920,7 +33045,7 @@ const timeoutInSeconds = {
 const version = {
     parameterPath: "version",
     mapper: {
-        defaultValue: "2021-08-06",
+        defaultValue: "2021-10-04",
         isConstant: true,
         serializedName: "x-ms-version",
         type: {
@@ -37748,14 +37873,15 @@ const logger = logger$1.createClientLogger("storage-blob");
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT license.
-const SDK_VERSION = "12.11.0";
-const SERVICE_VERSION = "2021-08-06";
+const SDK_VERSION = "12.12.0";
+const SERVICE_VERSION = "2021-10-04";
 const BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024; // 256MB
 const BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024; // 4000MB
 const BLOCK_BLOB_MAX_BLOCKS = 50000;
 const DEFAULT_BLOCK_BUFFER_SIZE_BYTES = 8 * 1024 * 1024; // 8MB
 const DEFAULT_BLOB_DOWNLOAD_BLOCK_BYTES = 4 * 1024 * 1024; // 4MB
 const DEFAULT_MAX_DOWNLOAD_RETRY_REQUESTS = 5;
+const REQUEST_TIMEOUT = 100 * 1000; // In ms
 /**
  * The OAuth scope to use with Azure Storage.
  */
@@ -37943,6 +38069,30 @@ const StorageBlobLoggingAllowedQueryParameters = [
 ];
 const BlobUsesCustomerSpecifiedEncryptionMsg = "BlobUsesCustomerSpecifiedEncryption";
 const BlobDoesNotUseCustomerSpecifiedEncryption = "BlobDoesNotUseCustomerSpecifiedEncryption";
+/// List of ports used for path style addressing.
+/// Path style addressing means that storage account is put in URI's Path segment in instead of in host.
+const PathStylePorts = [
+    "10000",
+    "10001",
+    "10002",
+    "10003",
+    "10004",
+    "10100",
+    "10101",
+    "10102",
+    "10103",
+    "10104",
+    "11000",
+    "11001",
+    "11002",
+    "11003",
+    "11004",
+    "11100",
+    "11101",
+    "11102",
+    "11103",
+    "11104",
+];
 
 // Copyright (c) Microsoft Corporation.
 /**
@@ -38384,7 +38534,8 @@ function isIpEndpointStyle(parsedUrl) {
     // Case 2: localhost(:port), use broad regex to match port part.
     // Case 3: Ipv4, use broad regex which just check if host contains Ipv4.
     // For valid host please refer to https://man7.org/linux/man-pages/man7/hostname.7.html.
-    return /^.*:.*:.*$|^localhost(:[0-9]+)?$|^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}(:[0-9]+)?$/.test(host);
+    return (/^.*:.*:.*$|^localhost(:[0-9]+)?$|^(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])(\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])){3}(:[0-9]+)?$/.test(host) ||
+        (parsedUrl.getPort() !== undefined && PathStylePorts.includes(parsedUrl.getPort())));
 }
 /**
  * Convert Tags to encoded string.
@@ -38901,6 +39052,16 @@ function* ExtractPageRangeInfoItems(getPageRangesSegment) {
             isClear: true,
         };
     }
+}
+/**
+ * Escape the blobName but keep path separator ('/').
+ */
+function EscapePath(blobName) {
+    const split = blobName.split("/");
+    for (let i = 0; i < split.length; i++) {
+        split[i] = encodeURIComponent(split[i]);
+    }
+    return split.join("/");
 }
 
 // Copyright (c) Microsoft Corporation.
@@ -39860,7 +40021,7 @@ class StorageSharedKeyCredential extends Credential {
  * Changes may cause incorrect behavior and will be lost if the code is regenerated.
  */
 const packageName = "azure-storage-blob";
-const packageVersion = "12.11.0";
+const packageVersion = "12.12.0";
 class StorageClientContext extends coreHttp__namespace.ServiceClient {
     /**
      * Initializes a new instance of the StorageClientContext class.
@@ -39886,7 +40047,7 @@ class StorageClientContext extends coreHttp__namespace.ServiceClient {
         // Parameter assignments
         this.url = url;
         // Assigning values to Constant parameters
-        this.version = options.version || "2021-08-06";
+        this.version = options.version || "2021-10-04";
     }
 }
 
@@ -43774,8 +43935,10 @@ async function streamToBuffer(stream, buffer, offset, end, encoding) {
     let pos = 0; // Position in stream
     const count = end - offset; // Total amount of data needed in stream
     return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error(`The operation cannot be completed in timeout.`)), REQUEST_TIMEOUT);
         stream.on("readable", () => {
             if (pos >= count) {
+                clearTimeout(timeout);
                 resolve();
                 return;
             }
@@ -43792,12 +43955,16 @@ async function streamToBuffer(stream, buffer, offset, end, encoding) {
             pos += chunkLength;
         });
         stream.on("end", () => {
+            clearTimeout(timeout);
             if (pos < count) {
                 reject(new Error(`Stream drains before getting enough data needed. Data read: ${pos}, data need: ${count}`));
             }
             resolve();
         });
-        stream.on("error", reject);
+        stream.on("error", (msg) => {
+            clearTimeout(timeout);
+            reject(msg);
+        });
     });
 }
 /**
@@ -47394,7 +47561,7 @@ class ContainerClient extends StorageClient {
      * @returns A new BlobClient object for the given blob name.
      */
     getBlobClient(blobName) {
-        return new BlobClient(appendToURLPath(this.url, encodeURIComponent(blobName)), this.pipeline);
+        return new BlobClient(appendToURLPath(this.url, EscapePath(blobName)), this.pipeline);
     }
     /**
      * Creates an {@link AppendBlobClient}
@@ -47402,7 +47569,7 @@ class ContainerClient extends StorageClient {
      * @param blobName - An append blob name
      */
     getAppendBlobClient(blobName) {
-        return new AppendBlobClient(appendToURLPath(this.url, encodeURIComponent(blobName)), this.pipeline);
+        return new AppendBlobClient(appendToURLPath(this.url, EscapePath(blobName)), this.pipeline);
     }
     /**
      * Creates a {@link BlockBlobClient}
@@ -47420,7 +47587,7 @@ class ContainerClient extends StorageClient {
      * ```
      */
     getBlockBlobClient(blobName) {
-        return new BlockBlobClient(appendToURLPath(this.url, encodeURIComponent(blobName)), this.pipeline);
+        return new BlockBlobClient(appendToURLPath(this.url, EscapePath(blobName)), this.pipeline);
     }
     /**
      * Creates a {@link PageBlobClient}
@@ -47428,7 +47595,7 @@ class ContainerClient extends StorageClient {
      * @param blobName - A page blob name
      */
     getPageBlobClient(blobName) {
-        return new PageBlobClient(appendToURLPath(this.url, encodeURIComponent(blobName)), this.pipeline);
+        return new PageBlobClient(appendToURLPath(this.url, EscapePath(blobName)), this.pipeline);
     }
     /**
      * Returns all user-defined metadata and system properties for the specified
@@ -55732,63 +55899,67 @@ function range(a, b, str) {
 /***/ 3682:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-var register = __nccwpck_require__(4670)
-var addHook = __nccwpck_require__(5549)
-var removeHook = __nccwpck_require__(6819)
+var register = __nccwpck_require__(4670);
+var addHook = __nccwpck_require__(5549);
+var removeHook = __nccwpck_require__(6819);
 
 // bind with array of arguments: https://stackoverflow.com/a/21792913
-var bind = Function.bind
-var bindable = bind.bind(bind)
+var bind = Function.bind;
+var bindable = bind.bind(bind);
 
-function bindApi (hook, state, name) {
-  var removeHookRef = bindable(removeHook, null).apply(null, name ? [state, name] : [state])
-  hook.api = { remove: removeHookRef }
-  hook.remove = removeHookRef
-
-  ;['before', 'error', 'after', 'wrap'].forEach(function (kind) {
-    var args = name ? [state, kind, name] : [state, kind]
-    hook[kind] = hook.api[kind] = bindable(addHook, null).apply(null, args)
-  })
+function bindApi(hook, state, name) {
+  var removeHookRef = bindable(removeHook, null).apply(
+    null,
+    name ? [state, name] : [state]
+  );
+  hook.api = { remove: removeHookRef };
+  hook.remove = removeHookRef;
+  ["before", "error", "after", "wrap"].forEach(function (kind) {
+    var args = name ? [state, kind, name] : [state, kind];
+    hook[kind] = hook.api[kind] = bindable(addHook, null).apply(null, args);
+  });
 }
 
-function HookSingular () {
-  var singularHookName = 'h'
+function HookSingular() {
+  var singularHookName = "h";
   var singularHookState = {
-    registry: {}
-  }
-  var singularHook = register.bind(null, singularHookState, singularHookName)
-  bindApi(singularHook, singularHookState, singularHookName)
-  return singularHook
+    registry: {},
+  };
+  var singularHook = register.bind(null, singularHookState, singularHookName);
+  bindApi(singularHook, singularHookState, singularHookName);
+  return singularHook;
 }
 
-function HookCollection () {
+function HookCollection() {
   var state = {
-    registry: {}
-  }
+    registry: {},
+  };
 
-  var hook = register.bind(null, state)
-  bindApi(hook, state)
+  var hook = register.bind(null, state);
+  bindApi(hook, state);
 
-  return hook
+  return hook;
 }
 
-var collectionHookDeprecationMessageDisplayed = false
-function Hook () {
+var collectionHookDeprecationMessageDisplayed = false;
+function Hook() {
   if (!collectionHookDeprecationMessageDisplayed) {
-    console.warn('[before-after-hook]: "Hook()" repurposing warning, use "Hook.Collection()". Read more: https://git.io/upgrade-before-after-hook-to-1.4')
-    collectionHookDeprecationMessageDisplayed = true
+    console.warn(
+      '[before-after-hook]: "Hook()" repurposing warning, use "Hook.Collection()". Read more: https://git.io/upgrade-before-after-hook-to-1.4'
+    );
+    collectionHookDeprecationMessageDisplayed = true;
   }
-  return HookCollection()
+  return HookCollection();
 }
 
-Hook.Singular = HookSingular.bind()
-Hook.Collection = HookCollection.bind()
+Hook.Singular = HookSingular.bind();
+Hook.Collection = HookCollection.bind();
 
-module.exports = Hook
+module.exports = Hook;
 // expose constructors as a named property for TypeScript
-module.exports.Hook = Hook
-module.exports.Singular = Hook.Singular
-module.exports.Collection = Hook.Collection
+module.exports.Hook = Hook;
+module.exports.Singular = Hook.Singular;
+module.exports.Collection = Hook.Collection;
 
 
 /***/ }),
@@ -66212,6 +66383,7 @@ const isX = id => !id || id.toLowerCase() === 'x' || id === '*'
 // ~1.2, ~1.2.x, ~>1.2, ~>1.2.x --> >=1.2.0 <1.3.0-0
 // ~1.2.3, ~>1.2.3 --> >=1.2.3 <1.3.0-0
 // ~1.2.0, ~>1.2.0 --> >=1.2.0 <1.3.0-0
+// ~0.0.1 --> >=0.0.1 <0.1.0-0
 const replaceTildes = (comp, options) =>
   comp.trim().split(/\s+/).map((c) => {
     return replaceTilde(c, options)
@@ -66251,6 +66423,8 @@ const replaceTilde = (comp, options) => {
 // ^1.2, ^1.2.x --> >=1.2.0 <2.0.0-0
 // ^1.2.3 --> >=1.2.3 <2.0.0-0
 // ^1.2.0 --> >=1.2.0 <2.0.0-0
+// ^0.0.1 --> >=0.0.1 <0.0.2-0
+// ^0.1.0 --> >=0.1.0 <0.2.0-0
 const replaceCarets = (comp, options) =>
   comp.trim().split(/\s+/).map((c) => {
     return replaceCaret(c, options)
@@ -67205,51 +67379,91 @@ module.exports = valid
 
 // just pre-load all the stuff that index.js lazily exports
 const internalRe = __nccwpck_require__(9523)
+const constants = __nccwpck_require__(2293)
+const SemVer = __nccwpck_require__(8088)
+const identifiers = __nccwpck_require__(2463)
+const parse = __nccwpck_require__(5925)
+const valid = __nccwpck_require__(9601)
+const clean = __nccwpck_require__(8848)
+const inc = __nccwpck_require__(900)
+const diff = __nccwpck_require__(4297)
+const major = __nccwpck_require__(6688)
+const minor = __nccwpck_require__(8447)
+const patch = __nccwpck_require__(2866)
+const prerelease = __nccwpck_require__(6014)
+const compare = __nccwpck_require__(4309)
+const rcompare = __nccwpck_require__(7499)
+const compareLoose = __nccwpck_require__(2804)
+const compareBuild = __nccwpck_require__(2156)
+const sort = __nccwpck_require__(1426)
+const rsort = __nccwpck_require__(8701)
+const gt = __nccwpck_require__(4123)
+const lt = __nccwpck_require__(194)
+const eq = __nccwpck_require__(1898)
+const neq = __nccwpck_require__(6017)
+const gte = __nccwpck_require__(5522)
+const lte = __nccwpck_require__(7520)
+const cmp = __nccwpck_require__(5098)
+const coerce = __nccwpck_require__(3466)
+const Comparator = __nccwpck_require__(1532)
+const Range = __nccwpck_require__(9828)
+const satisfies = __nccwpck_require__(6055)
+const toComparators = __nccwpck_require__(2706)
+const maxSatisfying = __nccwpck_require__(579)
+const minSatisfying = __nccwpck_require__(832)
+const minVersion = __nccwpck_require__(4179)
+const validRange = __nccwpck_require__(2098)
+const outside = __nccwpck_require__(420)
+const gtr = __nccwpck_require__(9380)
+const ltr = __nccwpck_require__(3323)
+const intersects = __nccwpck_require__(7008)
+const simplifyRange = __nccwpck_require__(5297)
+const subset = __nccwpck_require__(7863)
 module.exports = {
+  parse,
+  valid,
+  clean,
+  inc,
+  diff,
+  major,
+  minor,
+  patch,
+  prerelease,
+  compare,
+  rcompare,
+  compareLoose,
+  compareBuild,
+  sort,
+  rsort,
+  gt,
+  lt,
+  eq,
+  neq,
+  gte,
+  lte,
+  cmp,
+  coerce,
+  Comparator,
+  Range,
+  satisfies,
+  toComparators,
+  maxSatisfying,
+  minSatisfying,
+  minVersion,
+  validRange,
+  outside,
+  gtr,
+  ltr,
+  intersects,
+  simplifyRange,
+  subset,
+  SemVer,
   re: internalRe.re,
   src: internalRe.src,
   tokens: internalRe.t,
-  SEMVER_SPEC_VERSION: __nccwpck_require__(2293).SEMVER_SPEC_VERSION,
-  SemVer: __nccwpck_require__(8088),
-  compareIdentifiers: __nccwpck_require__(2463).compareIdentifiers,
-  rcompareIdentifiers: __nccwpck_require__(2463).rcompareIdentifiers,
-  parse: __nccwpck_require__(5925),
-  valid: __nccwpck_require__(9601),
-  clean: __nccwpck_require__(8848),
-  inc: __nccwpck_require__(900),
-  diff: __nccwpck_require__(4297),
-  major: __nccwpck_require__(6688),
-  minor: __nccwpck_require__(8447),
-  patch: __nccwpck_require__(2866),
-  prerelease: __nccwpck_require__(6014),
-  compare: __nccwpck_require__(4309),
-  rcompare: __nccwpck_require__(7499),
-  compareLoose: __nccwpck_require__(2804),
-  compareBuild: __nccwpck_require__(2156),
-  sort: __nccwpck_require__(1426),
-  rsort: __nccwpck_require__(8701),
-  gt: __nccwpck_require__(4123),
-  lt: __nccwpck_require__(194),
-  eq: __nccwpck_require__(1898),
-  neq: __nccwpck_require__(6017),
-  gte: __nccwpck_require__(5522),
-  lte: __nccwpck_require__(7520),
-  cmp: __nccwpck_require__(5098),
-  coerce: __nccwpck_require__(3466),
-  Comparator: __nccwpck_require__(1532),
-  Range: __nccwpck_require__(9828),
-  satisfies: __nccwpck_require__(6055),
-  toComparators: __nccwpck_require__(2706),
-  maxSatisfying: __nccwpck_require__(579),
-  minSatisfying: __nccwpck_require__(832),
-  minVersion: __nccwpck_require__(4179),
-  validRange: __nccwpck_require__(2098),
-  outside: __nccwpck_require__(420),
-  gtr: __nccwpck_require__(9380),
-  ltr: __nccwpck_require__(3323),
-  intersects: __nccwpck_require__(7008),
-  simplifyRange: __nccwpck_require__(5297),
-  subset: __nccwpck_require__(7863),
+  SEMVER_SPEC_VERSION: constants.SEMVER_SPEC_VERSION,
+  compareIdentifiers: identifiers.compareIdentifiers,
+  rcompareIdentifiers: identifiers.rcompareIdentifiers,
 }
 
 
