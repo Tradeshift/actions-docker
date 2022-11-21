@@ -33,7 +33,7 @@
     "@actions/tool-cache": "^1.7.1",
     "csv-parse": "^4.16.3",
     "semver": "^7.3.5",
-    "uuid": "^8.3.2"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
