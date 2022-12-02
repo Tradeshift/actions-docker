@@ -1,5 +1,4 @@
 import * as exec from '@actions/exec';
-import * as outputs from './outputs';
 import * as state from './state';
 import {buildxCachePath, buildxNewCachePath} from './cache';
 import {debug, endGroup, info, startGroup, warning} from '@actions/core';
@@ -9,17 +8,25 @@ export async function build(inputs: Inputs): Promise<string> {
   startGroup('🏃 Starting build');
 
   const shaTag = await getSHATag(inputs.repository);
-  outputs.setImage(shaTag);
+  const outputTag = inputs.skipDefaultTag ? inputs.tags[0] : shaTag;
+  if (!outputTag) {
+    throw new Error(
+      'No image tags specified. Default tag disabled and no tags specified'
+    );
+  }
   const args = await getBuildArgs(inputs, shaTag);
   const res = await exec.getExecOutput('docker', args);
   if (res.stderr !== '' && res.exitCode) {
     throw new Error(`buildx call failed: ${res.stderr.trim()}`);
   }
   endGroup();
-  return shaTag;
+  return outputTag;
 }
 
-async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
+async function getBuildArgs(
+  inputs: Inputs,
+  defaultTag: string
+): Promise<string[]> {
   const args = ['buildx', 'build'];
   if (inputs.file) {
     args.push('--file', inputs.file);
@@ -30,7 +37,9 @@ async function getBuildArgs(inputs: Inputs, shaTag: string): Promise<string[]> {
   await asyncForEach(inputs.tags, async tag => {
     args.push('--tag', tag);
   });
-  args.push('--tag', shaTag);
+  if (!inputs.skipDefaultTag) {
+    args.push('--tag', defaultTag);
+  }
   if (inputs.platform) {
     args.push('--platform', inputs.platform);
   }
