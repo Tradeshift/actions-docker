@@ -252,14 +252,14 @@ function getVersion() {
         return parseVersion(res.stdout);
     });
 }
-function inspect(shatag) {
+function inspect(tag) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)(`📦 Pushed image`);
         const res = yield (0, exec_1.getExecOutput)('docker', [
             'buildx',
             'imagetools',
             'inspect',
-            shatag
+            tag
         ]);
         if (res.stderr !== '' && res.exitCode) {
             throw new Error(res.stderr);
@@ -492,7 +492,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.logout = exports.login = exports.version = exports.isDockerhubRepository = exports.getRegistry = exports.build = void 0;
 const exec = __importStar(__nccwpck_require__(1514));
-const outputs = __importStar(__nccwpck_require__(5314));
 const state = __importStar(__nccwpck_require__(9249));
 const cache_1 = __nccwpck_require__(3782);
 const core_1 = __nccwpck_require__(2186);
@@ -500,18 +499,21 @@ function build(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)('🏃 Starting build');
         const shaTag = yield getSHATag(inputs.repository);
-        outputs.setImage(shaTag);
+        const outputTag = inputs.skipDefaultTag ? inputs.tags[0] : shaTag;
+        if (!outputTag) {
+            throw new Error('No image tags specified. Default tag disabled and no tags specified');
+        }
         const args = yield getBuildArgs(inputs, shaTag);
         const res = yield exec.getExecOutput('docker', args);
         if (res.stderr !== '' && res.exitCode) {
             throw new Error(`buildx call failed: ${res.stderr.trim()}`);
         }
         (0, core_1.endGroup)();
-        return shaTag;
+        return outputTag;
     });
 }
 exports.build = build;
-function getBuildArgs(inputs, shaTag) {
+function getBuildArgs(inputs, defaultTag) {
     return __awaiter(this, void 0, void 0, function* () {
         const args = ['buildx', 'build'];
         if (inputs.file) {
@@ -523,7 +525,9 @@ function getBuildArgs(inputs, shaTag) {
         yield asyncForEach(inputs.tags, (tag) => __awaiter(this, void 0, void 0, function* () {
             args.push('--tag', tag);
         }));
-        args.push('--tag', shaTag);
+        if (!inputs.skipDefaultTag) {
+            args.push('--tag', defaultTag);
+        }
         if (inputs.platform) {
             args.push('--platform', inputs.platform);
         }
@@ -700,6 +704,7 @@ function getInputs() {
             repoCacheKey: (0, core_1.getInput)('repo-cache-key'),
             repository: (0, core_1.getInput)('repository') || defaultRepository(),
             registries: (0, core_1.getMultilineInput)('registries'),
+            skipDefaultTag: (0, core_1.getInput)('skip-default-tag') === 'true',
             tags: yield getInputList('tags'),
             username: (0, core_1.getInput)('username'),
             authOnly: (0, core_1.getInput)('auth-only') === 'true',
@@ -789,6 +794,7 @@ const cache = __importStar(__nccwpck_require__(3782));
 const docker = __importStar(__nccwpck_require__(3758));
 const qemu = __importStar(__nccwpck_require__(7040));
 const state = __importStar(__nccwpck_require__(9249));
+const outputs = __importStar(__nccwpck_require__(5314));
 const inputs_1 = __nccwpck_require__(6180);
 const core_1 = __nccwpck_require__(2186);
 function run() {
@@ -817,10 +823,11 @@ function run() {
             }
             yield cache.restore(inputs);
             yield buildx.setup(inputs.builder);
-            const shaTag = yield docker.build(inputs);
+            const tag = yield docker.build(inputs);
             if (inputs.push) {
-                yield buildx.inspect(shaTag);
+                yield buildx.inspect(tag);
             }
+            outputs.setImage(tag);
         }
         catch (error) {
             (0, core_1.setFailed)(error.message);

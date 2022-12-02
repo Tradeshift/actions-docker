@@ -17,6 +17,7 @@ export interface Inputs {
   repoCacheKey: string;
   repository: string;
   registries: string[];
+  skipDefaultTag: boolean;
   tags: string[];
   username: string;
   authOnly: boolean;
@@ -38,6 +39,7 @@ export async function getInputs(): Promise<Inputs> {
     repoCacheKey: getInput('repo-cache-key'),
     repository: getInput('repository') || defaultRepository(),
     registries: getMultilineInput('registries'),
+    skipDefaultTag: getInput('skip-default-tag') === 'true',
     tags: await getInputList('tags'),
     username: getInput('username'),
     authOnly: getInput('auth-only') === 'true',

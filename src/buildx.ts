@@ -93,13 +93,13 @@ async function getVersion(): Promise<string> {
   return parseVersion(res.stdout);
 }
 
-export async function inspect(shatag: string): Promise<void> {
+export async function inspect(tag: string): Promise<void> {
   startGroup(`📦 Pushed image`);
   const res = await getExecOutput('docker', [
     'buildx',
     'imagetools',
     'inspect',
-    shatag
+    tag
   ]);
   if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);

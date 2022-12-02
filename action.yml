@@ -1,6 +1,6 @@
-name: 'docker action'
-description: 'does auth, build and push'
-author: 'Tradeshift'
+name: "docker action"
+description: "does auth, build and push"
+author: "Tradeshift"
 inputs:
   build-args:
     required: false
@@ -48,7 +48,7 @@ inputs:
   registries:
     required: false
     description: >
-      A mulitline string with registries to login to      
+      A mulitline string with registries to login to
   tags:
     required: false
     description: list of tags
@@ -62,18 +62,23 @@ inputs:
     description: >
       This flag can be used in case only authentication against docker 
       repo is needed
-    default: false
+    default: "false"
+  skip-default-tag:
+    required: false
+    description: >
+      This flag can be used to disable automatically tagging the image with the SHA.
+      Skipping default tag requires specifying alternative tags.
   useqemu:
     required: false
     description: >
       This flag can be used to enable Qemu, which is used for multi architecture builds like arm
-    default: false
+    default: "false"
 outputs:
   builder:
     description: buildx builder name
   image:
     description: full image name including git SHA tag
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
-  post: 'dist/index.js'
+  using: "node16"
+  main: "dist/index.js"
+  post: "dist/index.js"

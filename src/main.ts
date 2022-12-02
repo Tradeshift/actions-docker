@@ -3,6 +3,7 @@ import * as cache from './cache';
 import * as docker from './docker';
 import * as qemu from './qemu';
 import * as state from './state';
+import * as outputs from './outputs';
 
 import {Inputs, getInputs} from './inputs';
 import {setFailed, info} from '@actions/core';
@@ -38,10 +39,11 @@ async function run(): Promise<void> {
 
     await cache.restore(inputs);
     await buildx.setup(inputs.builder);
-    const shaTag = await docker.build(inputs);
+    const tag = await docker.build(inputs);
     if (inputs.push) {
-      await buildx.inspect(shaTag);
+      await buildx.inspect(tag);
     }
+    outputs.setImage(tag);
   } catch (error) {
     setFailed((error as Error).message);
   }
