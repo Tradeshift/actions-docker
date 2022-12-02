@@ -1,4 +1,4 @@
-name: 'pr'
+name: "pr"
 on: [pull_request]
 
 jobs:
@@ -26,3 +26,52 @@ jobs:
         id: diff
         continue-on-error: true
         run: git diff --quiet dist
+
+  self-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: docker build
+        id: build
+        uses: ./
+        with:
+          file: __tests__/Dockerfile
+          password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
+          repository: eu.gcr.io/tradeshift-base/actions-docker
+
+      - name: Check that push worked
+        run: |
+          docker pull ${{ steps.build.outputs.image }}
+
+  self-check-custom-tag:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: docker build
+        id: build
+        uses: ./
+        with:
+          file: __tests__/Dockerfile
+          skip-default-tag: true
+          password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
+          repository: eu.gcr.io/tradeshift-base/actions-docker-custom
+          tags: |
+            eu.gcr.io/tradeshift-base/actions-docker-custom:my-tag-${{ github.event.pull_request.head.sha }}
+
+      - name: Check that push worked
+        run: |
+          docker pull ${{ steps.build.outputs.image }}
+
+      - name: Check that skip works
+        run: |
+          if docker pull eu.gcr.io/tradeshift-base/actions-docker-custom:${{ github.event.pull_request.head.sha }}; then
+            echo "Tag found while expected to be missing";
+            exit 1;
+          fi;
+          echo "Confirmed: Default tag not found"
