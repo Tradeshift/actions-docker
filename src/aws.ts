@@ -4,6 +4,9 @@ import {info} from '@actions/core';
 import {which} from '@actions/io';
 import {getExecOutput} from '@actions/exec';
 
+import ecrIAMPolicy from './resources/ecr-iam-policy.json';
+import ecrLifecyclePolicy from './resources/ecr-lifecycle-policy.json';
+
 const ecrRepositoryRegex =
   /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
 
@@ -37,7 +40,10 @@ async function parseCLIVersion(stdout: string): Promise<string> {
 
 async function execCLI(args: string[]): Promise<string> {
   const cli = await getCLI();
-  const res = await getExecOutput(cli, args, {silent: true});
+  const res = await getExecOutput(cli, args, {
+    silent: true,
+    ignoreReturnCode: true
+  });
   if (res.stderr !== '' && res.exitCode) {
     throw new Error(res.stderr);
   } else if (res.stderr !== '') {
@@ -67,6 +73,65 @@ async function getDockerLoginPWD(
   return execCLI([ecrCmd, 'get-login-password', '--region', region]);
 }
 
+async function ensureEcrRepositoryExists(
+  repository: string,
+  region: string
+): Promise<void> {
+  const ecrCmd = isPubECRRepository(repository) ? 'ecr-public' : 'ecr';
+  const matches = ecrRepositoryRegex.exec(repository);
+  if (matches === null) {
+    throw new Error(
+      `${repository} seems to be malformed. Please correct it and try again...`
+    );
+  }
+  const res = await getExecOutput(
+    await getCLI(),
+    [
+      ecrCmd,
+      'describe-repositories',
+      '--region',
+      region,
+      '--repository-names',
+      matches[6]
+    ],
+    {silent: true, ignoreReturnCode: true}
+  );
+
+  if (res.exitCode === 254) {
+    info(`⚒️ ${matches[6]} does not exist, creating...`);
+    await execCLI([
+      ecrCmd,
+      'create-repository',
+      '--region',
+      region,
+      '--repository-name',
+      matches[6]
+    ]);
+
+    await execCLI([
+      ecrCmd,
+      'set-repository-policy',
+      '--region',
+      region,
+      '--repository-name',
+      matches[6],
+      '--policy-text',
+      JSON.stringify(ecrIAMPolicy)
+    ]);
+
+    await execCLI([
+      ecrCmd,
+      'put-lifecycle-policy',
+      '--region',
+      region,
+      '--repository-name',
+      matches[6],
+      '--lifecycle-policy-text',
+      JSON.stringify(ecrLifecyclePolicy)
+    ]);
+  }
+}
+
 export async function getECRPassword(repository: string): Promise<string> {
   const cliPath = await getCLI();
   const cliVersion = await getCLIVersion();
@@ -76,6 +141,12 @@ export async function getECRPassword(repository: string): Promise<string> {
     info(`💡 AWS Public ECR detected with ${region} region`);
   } else {
     info(`💡 AWS ECR detected with ${region} region`);
+
+    info(
+      `✔️ Checking if repository exists through AWS CLI ${cliVersion} (${cliPath})...`
+    );
+
+    await ensureEcrRepositoryExists(repository, region);
   }
 
   info(

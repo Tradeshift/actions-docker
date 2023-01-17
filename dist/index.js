@@ -1,6 +1,22 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 1624:
+/***/ ((module) => {
+
+"use strict";
+module.exports = JSON.parse('{"Version":"2012-10-17","Statement":[{"Sid":"OrganizationReadOnlyAccess","Effect":"Allow","Principal":"*","Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:ListImages"],"Condition":{"StringLike":{"aws:PrincipalOrgID":"o-u7wq0k1pyq"}}},{"Sid":"AllowCrossAccountPushPull","Effect":"Allow","Principal":{"AWS":["arn:aws:iam::615254691163:role/ts_all_test_ci-it-slave_role","arn:aws:iam::615254691163:role/ts_all_test_ci-components-slave_role","arn:aws:iam::694518486591:role/ts_all_base_administrator_role","arn:aws:iam::615254691163:role/ts_all_test_ts_github-actions-runner_role"]},"Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:CompleteLayerUpload","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:InitiateLayerUpload","ecr:ListImages","ecr:PutImage","ecr:UploadLayerPart"]}]}');
+
+/***/ }),
+
+/***/ 2919:
+/***/ ((module) => {
+
+"use strict";
+module.exports = JSON.parse('{"rules":[{"rulePriority":1,"description":"Keep last 30 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}');
+
+/***/ }),
+
 /***/ 5981:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -38,12 +54,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getECRPassword = exports.isECRRepository = void 0;
 const semver = __importStar(__nccwpck_require__(1383));
 const core_1 = __nccwpck_require__(2186);
 const io_1 = __nccwpck_require__(7436);
 const exec_1 = __nccwpck_require__(1514);
+const ecr_iam_policy_json_1 = __importDefault(__nccwpck_require__(1624));
+const ecr_lifecycle_policy_json_1 = __importDefault(__nccwpck_require__(2919));
 const ecrRepositoryRegex = /^(([0-9]{12})\.dkr\.ecr\.(.+)\.amazonaws\.com(.cn)?)(\/([^:]+)(:.+)?)?$/;
 function isECRRepository(repository) {
     return ecrRepositoryRegex.test(repository) || isPubECRRepository(repository);
@@ -78,7 +99,10 @@ function parseCLIVersion(stdout) {
 function execCLI(args) {
     return __awaiter(this, void 0, void 0, function* () {
         const cli = yield getCLI();
-        const res = yield (0, exec_1.getExecOutput)(cli, args, { silent: true });
+        const res = yield (0, exec_1.getExecOutput)(cli, args, {
+            silent: true,
+            ignoreReturnCode: true
+        });
         if (res.stderr !== '' && res.exitCode) {
             throw new Error(res.stderr);
         }
@@ -104,6 +128,54 @@ function getDockerLoginPWD(repository, region) {
         return execCLI([ecrCmd, 'get-login-password', '--region', region]);
     });
 }
+function ensureEcrRepositoryExists(repository, region) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const ecrCmd = isPubECRRepository(repository) ? 'ecr-public' : 'ecr';
+        const matches = ecrRepositoryRegex.exec(repository);
+        if (matches === null) {
+            throw new Error(`${repository} seems to be malformed. Please correct it and try again...`);
+        }
+        const res = yield (0, exec_1.getExecOutput)(yield getCLI(), [
+            ecrCmd,
+            'describe-repositories',
+            '--region',
+            region,
+            '--repository-names',
+            matches[6]
+        ], { silent: true, ignoreReturnCode: true });
+        if (res.exitCode === 254) {
+            (0, core_1.info)(`⚒️ ${matches[6]} does not exist, creating...`);
+            yield execCLI([
+                ecrCmd,
+                'create-repository',
+                '--region',
+                region,
+                '--repository-name',
+                matches[6]
+            ]);
+            yield execCLI([
+                ecrCmd,
+                'set-repository-policy',
+                '--region',
+                region,
+                '--repository-name',
+                matches[6],
+                '--policy-text',
+                JSON.stringify(ecr_iam_policy_json_1.default)
+            ]);
+            yield execCLI([
+                ecrCmd,
+                'put-lifecycle-policy',
+                '--region',
+                region,
+                '--repository-name',
+                matches[6],
+                '--lifecycle-policy-text',
+                JSON.stringify(ecr_lifecycle_policy_json_1.default)
+            ]);
+        }
+    });
+}
 function getECRPassword(repository) {
     return __awaiter(this, void 0, void 0, function* () {
         const cliPath = yield getCLI();
@@ -114,6 +186,8 @@ function getECRPassword(repository) {
         }
         else {
             (0, core_1.info)(`💡 AWS ECR detected with ${region} region`);
+            (0, core_1.info)(`✔️ Checking if repository exists through AWS CLI ${cliVersion} (${cliPath})...`);
+            yield ensureEcrRepositoryExists(repository, region);
         }
         (0, core_1.info)(`⬇️ Retrieving docker login password through AWS CLI ${cliVersion} (${cliPath})...`);
         return getDockerLoginPWD(repository, region);
