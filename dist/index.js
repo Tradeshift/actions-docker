@@ -599,6 +599,9 @@ function getBuildArgs(inputs, defaultTag) {
         yield asyncForEach(inputs.tags, (tag) => __awaiter(this, void 0, void 0, function* () {
             args.push('--tag', tag);
         }));
+        yield asyncForEach(inputs.labels, (label) => __awaiter(this, void 0, void 0, function* () {
+            args.push('--label', label);
+        }));
         if (!inputs.skipDefaultTag) {
             args.push('--tag', defaultTag);
         }
