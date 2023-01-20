@@ -99,6 +99,25 @@ jobs:
             eu.gcr.io/tradeshift-base/my-repo:latest
 ```
 
+### Image tracability with labels
+
+If you want to be able to lookup the repository for your image, or add more medata
+you can add labels.
+
+```yaml
+jobs:
+  docker:
+    runs-on: [self-hosted,ts-large-x64-docker-large]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: tradeshift/actions-docker@v1
+        with:
+          password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
+          labels: |
+            git-repo:${{ github.event.repository.name }}
+            owner:my-team
+```
+
 ### Caching
 
 Github repo cache can be enabled for caching docker layers.
