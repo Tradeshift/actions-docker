@@ -37,6 +37,9 @@ async function getBuildArgs(
   await asyncForEach(inputs.tags, async tag => {
     args.push('--tag', tag);
   });
+  await asyncForEach(inputs.labels, async label => {
+    args.push('--label', label);
+  });
   if (!inputs.skipDefaultTag) {
     args.push('--tag', defaultTag);
   }
