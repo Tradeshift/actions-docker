@@ -25,6 +25,10 @@ inputs:
     required: false
     description: >
       Password for docker registry detected from the repository.
+  docker-hub-password:
+    required: true
+    description: Password of tradeshiftops user in Docker Hub
+    default: ${{ secrets.DOCKER_HUB_PASSWORD }}
   push:
     required: false
     description: wether to push or not

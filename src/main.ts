@@ -30,6 +30,8 @@ async function run(): Promise<void> {
     const registry = docker.getRegistry(inputs.repository);
     await docker.login(registry, inputs.username, inputs.password);
 
+    await docker.login('', 'tradeshiftops', inputs.dockerHubPassword);
+
     if (inputs.authOnly) {
       return;
     }

@@ -11,6 +11,7 @@ export interface Inputs {
   labels: string[];
   load: boolean;
   password: string;
+  dockerHubPassword: string;
   platform: string;
   push: boolean;
   repoCache: boolean;
@@ -33,6 +34,7 @@ export async function getInputs(): Promise<Inputs> {
     labels: await getInputList('labels'),
     load: getInput('load') === 'true',
     password: getInput('password'),
+    dockerHubPassword: getInput('docker-hub-password'),
     platform: getInput('platform'),
     push: /true/i.test(getInput('push')),
     repoCache: getInput('repo-cache') === 'true',
