@@ -30,7 +30,9 @@
           "arn:aws:iam::615254691163:role/ts_all_test_ci-it-slave_role",
           "arn:aws:iam::615254691163:role/ts_all_test_ci-components-slave_role",
           "arn:aws:iam::694518486591:role/ts_all_base_administrator_role",
-          "arn:aws:iam::615254691163:role/ts_all_test_ts_github-actions-runner_role"
+          "arn:aws:iam::408856936053:role/ts_all_prod_eks-deployer_role",
+          "arn:aws:iam::694518486591:role/ts_all_base_eks-deployer_role",
+          "arn:aws:iam::933138817065:role/ts_all_card_eks-deployer_role"
         ]
       },
       "Action": [
