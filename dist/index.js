@@ -1586,12 +1586,13 @@ function unlinkFile(filePath) {
     });
 }
 exports.unlinkFile = unlinkFile;
-function getVersion(app) {
+function getVersion(app, additionalArgs = []) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Checking ${app} --version`);
         let versionOutput = '';
+        additionalArgs.push('--version');
+        core.debug(`Checking ${app} ${additionalArgs.join(' ')}`);
         try {
-            yield exec.exec(`${app} --version`, [], {
+            yield exec.exec(`${app}`, additionalArgs, {
                 ignoreReturnCode: true,
                 silent: true,
                 listeners: {
@@ -1611,19 +1612,14 @@ function getVersion(app) {
 // Use zstandard if possible to maximize cache performance
 function getCompressionMethod() {
     return __awaiter(this, void 0, void 0, function* () {
-        const versionOutput = yield getVersion('zstd');
+        const versionOutput = yield getVersion('zstd', ['--quiet']);
         const version = semver.clean(versionOutput);
-        if (!versionOutput.toLowerCase().includes('zstd command line interface')) {
-            // zstd is not installed
+        core.debug(`zstd version: ${version}`);
+        if (versionOutput === '') {
             return constants_1.CompressionMethod.Gzip;
         }
-        else if (!version || semver.lt(version, 'v1.3.2')) {
-            // zstd is installed but using a version earlier than v1.3.2
-            // v1.3.2 is required to use the `--long` options in zstd
-            return constants_1.CompressionMethod.ZstdWithoutLong;
-        }
         else {
-            return constants_1.CompressionMethod.Zstd;
+            return constants_1.CompressionMethod.ZstdWithoutLong;
         }
     });
 }
@@ -2110,14 +2106,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const exec_1 = __nccwpck_require__(1514);
-const core_1 = __nccwpck_require__(2186);
 const io = __importStar(__nccwpck_require__(7436));
 const fs_1 = __nccwpck_require__(7147);
 const path = __importStar(__nccwpck_require__(1017));
 const utils = __importStar(__nccwpck_require__(1518));
 const constants_1 = __nccwpck_require__(8840);
 const IS_WINDOWS = process.platform === 'win32';
-core_1.exportVariable('MSYS', 'winsymlinks:nativestrict');
 // Returns tar path and type: BSD or GNU
 function getTarPath() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -2307,7 +2301,10 @@ function execCommands(commands, cwd) {
     return __awaiter(this, void 0, void 0, function* () {
         for (const command of commands) {
             try {
-                yield exec_1.exec(command, undefined, { cwd });
+                yield exec_1.exec(command, undefined, {
+                    cwd,
+                    env: Object.assign(Object.assign({}, process.env), { MSYS: 'winsymlinks:nativestrict' })
+                });
             }
             catch (error) {
                 throw new Error(`${command.split(' ')[0]} failed with error: ${error === null || error === void 0 ? void 0 : error.message}`);
@@ -21455,10 +21452,12 @@ function deserializeState(serializedState) {
     }
 }
 function setStateError(inputs) {
-    const { state, stateProxy } = inputs;
+    const { state, stateProxy, isOperationError } = inputs;
     return (error) => {
-        stateProxy.setError(state, error);
-        stateProxy.setFailed(state);
+        if (isOperationError(error)) {
+            stateProxy.setError(state, error);
+            stateProxy.setFailed(state);
+        }
         throw error;
     };
 }
@@ -21513,10 +21512,11 @@ async function initOperation(inputs) {
     return state;
 }
 async function pollOperationHelper(inputs) {
-    const { poll, state, stateProxy, operationLocation, getOperationStatus, getResourceLocation, options, } = inputs;
+    const { poll, state, stateProxy, operationLocation, getOperationStatus, getResourceLocation, isOperationError, options, } = inputs;
     const response = await poll(operationLocation, options).catch(setStateError({
         state,
         stateProxy,
+        isOperationError,
     }));
     const status = getOperationStatus(response, state);
     logger.verbose(`LRO: Status:\n\tPolling from: ${state.config.operationLocation}\n\tOperation status: ${status}\n\tPolling status: ${terminalStates.includes(status) ? "Stopped" : "Running"}`);
@@ -21524,7 +21524,7 @@ async function pollOperationHelper(inputs) {
         const resourceLocation = getResourceLocation(response, state);
         if (resourceLocation !== undefined) {
             return {
-                response: await poll(resourceLocation).catch(setStateError({ state, stateProxy })),
+                response: await poll(resourceLocation).catch(setStateError({ state, stateProxy, isOperationError })),
                 status,
             };
         }
@@ -21533,7 +21533,7 @@ async function pollOperationHelper(inputs) {
 }
 /** Polls the long-running operation. */
 async function pollOperation(inputs) {
-    const { poll, state, stateProxy, options, getOperationStatus, getResourceLocation, getOperationLocation, withOperationLocation, getPollingInterval, processResult, updateState, setDelay, isDone, setErrorAsResult, } = inputs;
+    const { poll, state, stateProxy, options, getOperationStatus, getResourceLocation, getOperationLocation, isOperationError, withOperationLocation, getPollingInterval, processResult, updateState, setDelay, isDone, setErrorAsResult, } = inputs;
     const { operationLocation } = state.config;
     if (operationLocation !== undefined) {
         const { response, status } = await pollOperationHelper({
@@ -21543,6 +21543,7 @@ async function pollOperation(inputs) {
             stateProxy,
             operationLocation,
             getResourceLocation,
+            isOperationError,
             options,
         });
         processOperationStatus({
@@ -21799,6 +21800,9 @@ function getResourceLocation({ flatResponse }, state) {
     }
     return state.config.resourceLocation;
 }
+function isOperationError(e) {
+    return e.name === "RestError";
+}
 /** Polls the long-running operation. */
 async function pollHttpOperation(inputs) {
     const { lro, stateProxy, options, processResult, updateState, setDelay, state, setErrorAsResult, } = inputs;
@@ -21813,6 +21817,7 @@ async function pollHttpOperation(inputs) {
         getPollingInterval: parseRetryAfter,
         getOperationLocation,
         getOperationStatus,
+        isOperationError,
         getResourceLocation,
         options,
         /**
@@ -21901,7 +21906,7 @@ const createStateProxy$1 = () => ({
  * Returns a poller factory.
  */
 function buildCreatePoller(inputs) {
-    const { getOperationLocation, getStatusFromInitialResponse, getStatusFromPollResponse, getResourceLocation, getPollingInterval, resolveOnUnsuccessful, } = inputs;
+    const { getOperationLocation, getStatusFromInitialResponse, getStatusFromPollResponse, isOperationError, getResourceLocation, getPollingInterval, resolveOnUnsuccessful, } = inputs;
     return async ({ init, poll }, options) => {
         const { processResult, updateState, withOperationLocation: withOperationLocationCallback, intervalInMs = POLL_INTERVAL_IN_MS, restoreFrom, } = options || {};
         const stateProxy = createStateProxy$1();
@@ -22004,6 +22009,7 @@ function buildCreatePoller(inputs) {
                     state,
                     stateProxy,
                     getOperationLocation,
+                    isOperationError,
                     withOperationLocation,
                     getPollingInterval,
                     getOperationStatus: getStatusFromPollResponse,
@@ -22043,6 +22049,7 @@ async function createHttpPoller(lro, options) {
     return buildCreatePoller({
         getStatusFromInitialResponse,
         getStatusFromPollResponse: getOperationStatus,
+        isOperationError,
         getOperationLocation,
         getResourceLocation,
         getPollingInterval: parseRetryAfter,
@@ -59201,7 +59208,9 @@ function fetch(url, opts) {
 				return;
 			}
 
-			destroyStream(response.body, err);
+			if (response && response.body) {
+				destroyStream(response.body, err);
+			}
 		});
 
 		/* c8 ignore next 18 */
@@ -74507,7 +74516,7 @@ module.exports = require("zlib");
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"Version":"2012-10-17","Statement":[{"Sid":"OrganizationReadOnlyAccess","Effect":"Allow","Principal":"*","Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:ListImages"],"Condition":{"StringLike":{"aws:PrincipalOrgID":"o-u7wq0k1pyq"}}},{"Sid":"AllowCrossAccountPushPull","Effect":"Allow","Principal":{"AWS":["arn:aws:iam::615254691163:role/ts_all_test_ci-it-slave_role","arn:aws:iam::615254691163:role/ts_all_test_ci-components-slave_role","arn:aws:iam::694518486591:role/ts_all_base_administrator_role","arn:aws:iam::615254691163:role/ts_all_test_ts_github-actions-runner_role"]},"Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:CompleteLayerUpload","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:InitiateLayerUpload","ecr:ListImages","ecr:PutImage","ecr:UploadLayerPart"]}]}');
+module.exports = JSON.parse('{"Version":"2012-10-17","Statement":[{"Sid":"OrganizationReadOnlyAccess","Effect":"Allow","Principal":"*","Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:ListImages"],"Condition":{"StringLike":{"aws:PrincipalOrgID":"o-u7wq0k1pyq"}}},{"Sid":"AllowCrossAccountPushPull","Effect":"Allow","Principal":{"AWS":["arn:aws:iam::694518486591:role/ts_all_base_administrator_role","arn:aws:iam::694518486591:role/ts_all_base_eks-deployer_role","arn:aws:iam::933138817065:role/ts_all_card_eks-deployer_role","arn:aws:iam::615254691163:role/ts_all_test_ci-it-slave_role","arn:aws:iam::615254691163:role/ts_all_test_ci-components-slave_role","arn:aws:iam::408856936053:role/ts_all_prod_eks-deployer_role"]},"Action":["ecr:BatchCheckLayerAvailability","ecr:BatchGetImage","ecr:CompleteLayerUpload","ecr:DescribeImageScanFindings","ecr:DescribeImages","ecr:DescribeRepositories","ecr:GetAuthorizationToken","ecr:GetDownloadUrlForLayer","ecr:GetRepositoryPolicy","ecr:InitiateLayerUpload","ecr:ListImages","ecr:PutImage","ecr:UploadLayerPart"]}]}');
 
 /***/ }),
 
@@ -74515,7 +74524,7 @@ module.exports = JSON.parse('{"Version":"2012-10-17","Statement":[{"Sid":"Organi
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"rules":[{"rulePriority":1,"description":"Keep last 30 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}');
+module.exports = JSON.parse('{"rules":[{"rulePriority":1,"description":"Keep last 150 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":150},"action":{"type":"expire"}}]}');
 
 /***/ }),
 
