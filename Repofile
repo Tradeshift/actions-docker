@@ -1,7 +1,7 @@
 {
     "description": "Docker Github Action",
     "maintainers": [
-        "Developer productivity"
+        "platform-ops"
     ],
     "topics": [
         "github-action",
