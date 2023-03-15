@@ -49,12 +49,12 @@ jobs:
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
           file: Dockerfile.a
-          repository: eu.gcr.io/tradeshift-base/my-repo-image-a
+          repository: 063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo-image-a
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
           file: Dockerfile.b
-          repository: eu.gcr.io/tradeshift-base/my-repo-image-b
+          repository: 063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo-image-b
 ```
 
 Another example where we have a dedicated folder for each of the images. The
@@ -71,12 +71,12 @@ jobs:
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
           context: image-a
-          repository: eu.gcr.io/tradeshift-base/my-repo-image-a
+          repository: 063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo-image-a
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
           context: image-b
-          repository: eu.gcr.io/tradeshift-base/my-repo-image-b
+          repository: 063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo-image-b
 ```
 
 ### Setting additional tags
@@ -95,8 +95,8 @@ jobs:
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
           tags: |
-            eu.gcr.io/tradeshift-base/my-repo:master
-            eu.gcr.io/tradeshift-base/my-repo:latest
+            063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo:master
+            063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-repo:latest
 ```
 
 ### Image tracability with labels

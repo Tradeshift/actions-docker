@@ -17,7 +17,7 @@ describe(isECRRepository, () => {
   });
 
   it('returns false when given a non-ECR repository', () => {
-    expect(isECRRepository('eu.gcr.io/tradeshift-base/my-image')).toEqual(
+    expect(isECRRepository('063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/my-image')).toEqual(
       false
     );
     expect(isECRRepository('test')).toEqual(false);

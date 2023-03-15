@@ -780,7 +780,7 @@ function getInputs() {
 }
 exports.getInputs = getInputs;
 function defaultRepository() {
-    return `eu.gcr.io/tradeshift-base/${github_1.context.repo.repo}`;
+    return `063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/${github_1.context.repo.repo}`;
 }
 function getInputList(name, ignoreComma = false) {
     return __awaiter(this, void 0, void 0, function* () {

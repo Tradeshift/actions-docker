@@ -53,7 +53,7 @@ export async function getInputs(): Promise<Inputs> {
 }
 
 function defaultRepository(): string {
-  return `eu.gcr.io/tradeshift-base/${context.repo.repo}`;
+  return `063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/${context.repo.repo}`;
 }
 
 async function getInputList(

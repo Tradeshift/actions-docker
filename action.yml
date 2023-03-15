@@ -44,7 +44,7 @@ inputs:
     required: false
     description: >
       The repository where default tags will be pushed. If not specified this
-      will default to eu.gcr.io/tradeshift-base/<repo-name>
+      will default to 063399264027.dkr.ecr.eu-west-1.amazonaws.com/tradeshift-base/<repo-name>
   registries:
     required: false
     description: >
