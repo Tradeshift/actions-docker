@@ -52,11 +52,9 @@ async function execCLI(args: string[]): Promise<string> {
   return res.stdout.trim();
 }
 
-function getRegion(registry: string): string {
+export function getRegion(registry: string): string {
   if (isPubECRRepository(registry)) {
-    return (
-      process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || 'us-east-1'
-    );
+    return 'us-east-1';
   }
   const matches = registry.match(ecrRepositoryRegex);
   if (matches === null) {
