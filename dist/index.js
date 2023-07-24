@@ -943,17 +943,26 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.setup = void 0;
+exports.setup = exports.isSelfHostedRunner = void 0;
 const core_1 = __nccwpck_require__(2186);
 const exec_1 = __nccwpck_require__(1514);
+const qemuImageSufix = 'tonistiigi/binfmt:qemu-v6.2.0';
+function isSelfHostedRunner() {
+    const runnerType = process.env.RUNNER_OS || '';
+    return runnerType.toLowerCase() === 'self-hosted';
+}
+exports.isSelfHostedRunner = isSelfHostedRunner;
 function setup(registry) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)(`🖥️ Setup qemu`);
+        const qemuImage = isSelfHostedRunner()
+            ? `${registry}/tradeshift-base/${qemuImageSufix}`
+            : `public.ecr.aws/tradeshift/${qemuImageSufix}`;
         const res = yield (0, exec_1.getExecOutput)('docker', [
             'run',
             '--privileged',
             '--rm',
-            `${registry}/tradeshift-base/tonistiigi/binfmt:qemu-v6.2.0`,
+            qemuImage,
             '--install',
             'all'
         ]);
