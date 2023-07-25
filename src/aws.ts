@@ -1,6 +1,6 @@
 import * as semver from 'semver';
 
-import {info} from '@actions/core';
+import {info, setSecret, exportVariable} from '@actions/core';
 import {which} from '@actions/io';
 import {getExecOutput} from '@actions/exec';
 
@@ -152,4 +152,18 @@ export async function getECRPassword(repository: string): Promise<string> {
   );
 
   return getDockerLoginPWD(repository, region);
+}
+
+export function exportCredentials(
+  accessKeyId: string,
+  secretAccessKey: string
+): void {
+  if (accessKeyId && secretAccessKey) {
+    info('Use AWS credentials.');
+
+    setSecret(accessKeyId);
+    exportVariable('AWS_ACCESS_KEY_ID', accessKeyId);
+    setSecret(secretAccessKey);
+    exportVariable('AWS_SECRET_ACCESS_KEY', secretAccessKey);
+  }
 }

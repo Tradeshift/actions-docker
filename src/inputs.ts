@@ -1,4 +1,4 @@
-import {getECRPassword, isECRRepository} from './aws';
+import {getECRPassword, isECRRepository, exportCredentials} from './aws';
 import {context} from '@actions/github';
 import csvparse from 'csv-parse/lib/sync';
 import {getInput, getMultilineInput} from '@actions/core';
@@ -22,6 +22,13 @@ export interface Inputs {
   username: string;
   authOnly: boolean;
   useqemu: boolean;
+  awsAccessKeyId: string;
+  awsSecretAccessKey: string;
+}
+
+function isSelfHostedRunner(): boolean {
+  const labels = process.env.RUNNER_LABELS || '';
+  return labels?.includes('self-hosted');
 }
 
 export async function getInputs(): Promise<Inputs> {
@@ -43,9 +50,14 @@ export async function getInputs(): Promise<Inputs> {
     tags: await getInputList('tags'),
     username: getInput('username'),
     authOnly: getInput('auth-only') === 'true',
-    useqemu: getInput('useqemu') === 'true'
+    useqemu: getInput('useqemu') === 'true',
+    awsAccessKeyId: getInput('aws-access-key-id'),
+    awsSecretAccessKey: getInput('aws-secret-access-key')
   };
   if (isECRRepository(inputs.repository)) {
+    if (!isSelfHostedRunner()) {
+      exportCredentials(inputs.awsAccessKeyId, inputs.awsSecretAccessKey);
+    }
     inputs.username = 'AWS';
     inputs.password = await getECRPassword(inputs.repository);
   }
