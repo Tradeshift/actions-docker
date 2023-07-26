@@ -42,7 +42,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getECRPassword = exports.getRegion = exports.isECRRepository = void 0;
+exports.exportCredentials = exports.getECRPassword = exports.getRegion = exports.isECRRepository = void 0;
 const semver = __importStar(__nccwpck_require__(1383));
 const core_1 = __nccwpck_require__(2186);
 const io_1 = __nccwpck_require__(7436);
@@ -179,6 +179,16 @@ function getECRPassword(repository) {
     });
 }
 exports.getECRPassword = getECRPassword;
+function exportCredentials(accessKeyId, secretAccessKey) {
+    if (accessKeyId && secretAccessKey) {
+        (0, core_1.info)('Use AWS credentials.');
+        (0, core_1.setSecret)(accessKeyId);
+        (0, core_1.exportVariable)('AWS_ACCESS_KEY_ID', accessKeyId);
+        (0, core_1.setSecret)(secretAccessKey);
+        (0, core_1.exportVariable)('AWS_SECRET_ACCESS_KEY', secretAccessKey);
+    }
+}
+exports.exportCredentials = exportCredentials;
 
 
 /***/ }),
@@ -750,6 +760,10 @@ const aws_1 = __nccwpck_require__(5981);
 const github_1 = __nccwpck_require__(5438);
 const sync_1 = __importDefault(__nccwpck_require__(8750));
 const core_1 = __nccwpck_require__(2186);
+function isSelfHostedRunner() {
+    const labels = process.env.RUNNER_LABELS || '';
+    return labels === null || labels === void 0 ? void 0 : labels.includes('self-hosted');
+}
 function getInputs() {
     return __awaiter(this, void 0, void 0, function* () {
         const inputs = {
@@ -770,9 +784,14 @@ function getInputs() {
             tags: yield getInputList('tags'),
             username: (0, core_1.getInput)('username'),
             authOnly: (0, core_1.getInput)('auth-only') === 'true',
-            useqemu: (0, core_1.getInput)('useqemu') === 'true'
+            useqemu: (0, core_1.getInput)('useqemu') === 'true',
+            awsAccessKeyId: (0, core_1.getInput)('aws-access-key-id'),
+            awsSecretAccessKey: (0, core_1.getInput)('aws-secret-access-key')
         };
         if ((0, aws_1.isECRRepository)(inputs.repository)) {
+            if (!isSelfHostedRunner()) {
+                (0, aws_1.exportCredentials)(inputs.awsAccessKeyId, inputs.awsSecretAccessKey);
+            }
             inputs.username = 'AWS';
             inputs.password = yield (0, aws_1.getECRPassword)(inputs.repository);
         }

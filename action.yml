@@ -73,6 +73,14 @@ inputs:
     description: >
       This flag can be used to enable Qemu, which is used for multi architecture builds like arm
     default: "false"
+  aws-access-key-id:
+    required: false
+    description: >
+      AWS Access Key ID is required if runners are hosted by GitHub.
+  aws-secret-access-key:
+    required: false
+    description: >
+      AWS Secret Key is required if runners are hosted by GitHub.
 outputs:
   builder:
     description: buildx builder name
