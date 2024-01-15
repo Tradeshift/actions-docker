@@ -99,9 +99,9 @@ jobs:
             eu.gcr.io/tradeshift-base/my-repo:latest
 ```
 
-### Image tracability with labels
+### Image traceability with labels
 
-If you want to be able to lookup the repository for your image, or add more medata
+If you want to be able to lookup the repository for your image, or add more metadata
 you can add labels.
 
 ```yaml
@@ -134,7 +134,7 @@ jobs:
           repo-cache: true
 ```
 
-We currently dont support docker registry caching but that should be
+We currently don't support docker registry caching but that should be
 implemented in the future.
 
 ### Platform
