@@ -23,7 +23,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -44,7 +44,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -66,7 +66,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -90,7 +90,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -109,7 +109,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -127,7 +127,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
@@ -146,7 +146,7 @@ jobs:
   docker:
     runs-on: [self-hosted,ts-large-x64-docker-large]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: tradeshift/actions-docker@v1
         with:
           password: ${{ secrets.GCLOUD_SERVICE_ACCOUNT_KEY_NOBASE64 }}
