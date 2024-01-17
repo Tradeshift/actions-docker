@@ -75,7 +75,6 @@ inputs:
       based on the type of build: on master or on pull rquest.
       An image built from a pull request is tagged with pr-<number>-<SHA>.
       An image built on merge to master branch is tagged with master-<SHA>.
-    default: "true"
   useqemu:
     required: false
     description: >
