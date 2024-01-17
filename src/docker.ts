@@ -3,6 +3,7 @@ import * as state from './state';
 import {buildxCachePath, buildxNewCachePath} from './cache';
 import {debug, endGroup, info, startGroup, warning} from '@actions/core';
 import {Inputs} from './inputs';
+import * as fs from 'fs';
 
 export async function build(inputs: Inputs): Promise<string> {
   startGroup('🏃 Starting build');
@@ -43,6 +44,10 @@ async function getBuildArgs(
   if (!inputs.skipDefaultTag) {
     args.push('--tag', defaultTag);
   }
+  const shaTagWithPrefix = await getSHATagWithPrefix(inputs.repository);
+  if (!inputs.skipTagWithPrefix && !inputs.skipDefaultTag) {
+    args.push('--tag', shaTagWithPrefix);
+  }
   if (inputs.platform) {
     args.push('--platform', inputs.platform);
   }
@@ -78,14 +83,58 @@ export function isDockerhubRepository(repository: string): boolean {
   return registry === '';
 }
 
-async function getSHATag(repository: string): Promise<string> {
+async function getSHA(): Promise<string> {
   const res = await exec.getExecOutput('git', ['rev-parse', 'HEAD'], {
     silent: true
   });
   if (res.stderr !== '' && res.exitCode) {
     throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
   }
-  return `${repository}:${res.stdout.trim()}`;
+  return res.stdout.trim();
+}
+
+async function getSHATag(repository: string): Promise<string> {
+  const sha = await getSHA();
+  return `${repository}:${sha}`;
+}
+
+async function getSHATagWithPrefix(repository: string): Promise<string> {
+  const sha = await getSHA();
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) {
+    throw new Error('GITHUB_EVENT_PATH env variable not found');
+  }
+  const eventContent = await fs.promises.readFile(eventPath, {
+    encoding: 'utf8'
+  });
+  const event = JSON.parse(eventContent);
+  const default_branch = event?.repository?.default_branch;
+  if (typeof default_branch != 'string') {
+    throw new Error(
+      `Unable to extract repository.default_branch from ${eventPath}`
+    );
+  }
+
+  let shaWithPrefix: string;
+  const ref = event?.ref || '';
+  if (ref !== '' && ref === `refs/heads/${default_branch}`) {
+    // on merge to default branch
+    shaWithPrefix = `${default_branch}-${sha}`;
+  } else {
+    // on pull request
+    const number = event?.number;
+    const issueNumber = event?.issue?.number;
+    if (typeof number == 'number') {
+      shaWithPrefix = `pr-${number}-${sha}`;
+    } else if (typeof issueNumber == 'number') {
+      shaWithPrefix = `pr-${issueNumber}-${sha}`;
+    } else {
+      throw new Error(
+        "Unable to establish if it's a merge on master or a push on a pull request or a comment on pull request!"
+      );
+    }
+  }
+  return `${repository}:${shaWithPrefix}`;
 }
 
 export async function version(): Promise<void> {

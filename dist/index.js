@@ -564,6 +564,7 @@ const exec = __importStar(__nccwpck_require__(1514));
 const state = __importStar(__nccwpck_require__(9249));
 const cache_1 = __nccwpck_require__(3782);
 const core_1 = __nccwpck_require__(2186);
+const fs = __importStar(__nccwpck_require__(7147));
 function build(inputs) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)('🏃 Starting build');
@@ -600,6 +601,10 @@ function getBuildArgs(inputs, defaultTag) {
         if (!inputs.skipDefaultTag) {
             args.push('--tag', defaultTag);
         }
+        const shaTagWithPrefix = yield getSHATagWithPrefix(inputs.repository);
+        if (!inputs.skipTagWithPrefix && !inputs.skipDefaultTag) {
+            args.push('--tag', shaTagWithPrefix);
+        }
         if (inputs.platform) {
             args.push('--platform', inputs.platform);
         }
@@ -634,7 +639,7 @@ function isDockerhubRepository(repository) {
     return registry === '';
 }
 exports.isDockerhubRepository = isDockerhubRepository;
-function getSHATag(repository) {
+function getSHA() {
     return __awaiter(this, void 0, void 0, function* () {
         const res = yield exec.getExecOutput('git', ['rev-parse', 'HEAD'], {
             silent: true
@@ -642,7 +647,52 @@ function getSHATag(repository) {
         if (res.stderr !== '' && res.exitCode) {
             throw new Error(`git rev-parse HEAD failed: ${res.stderr.trim()}`);
         }
-        return `${repository}:${res.stdout.trim()}`;
+        return res.stdout.trim();
+    });
+}
+function getSHATag(repository) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const sha = yield getSHA();
+        return `${repository}:${sha}`;
+    });
+}
+function getSHATagWithPrefix(repository) {
+    var _a, _b;
+    return __awaiter(this, void 0, void 0, function* () {
+        const sha = yield getSHA();
+        const eventPath = process.env.GITHUB_EVENT_PATH;
+        if (!eventPath) {
+            throw new Error('GITHUB_EVENT_PATH env variable not found');
+        }
+        const eventContent = yield fs.promises.readFile(eventPath, {
+            encoding: 'utf8'
+        });
+        const event = JSON.parse(eventContent);
+        const default_branch = (_a = event === null || event === void 0 ? void 0 : event.repository) === null || _a === void 0 ? void 0 : _a.default_branch;
+        if (typeof default_branch != 'string') {
+            throw new Error(`Unable to extract repository.default_branch from ${eventPath}`);
+        }
+        let shaWithPrefix;
+        const ref = (event === null || event === void 0 ? void 0 : event.ref) || '';
+        if (ref !== '' && ref === `refs/heads/${default_branch}`) {
+            // on merge to default branch
+            shaWithPrefix = `${default_branch}-${sha}`;
+        }
+        else {
+            // on pull request
+            const number = event === null || event === void 0 ? void 0 : event.number;
+            const issueNumber = (_b = event === null || event === void 0 ? void 0 : event.issue) === null || _b === void 0 ? void 0 : _b.number;
+            if (typeof number == 'number') {
+                shaWithPrefix = `pr-${number}-${sha}`;
+            }
+            else if (typeof issueNumber == 'number') {
+                shaWithPrefix = `pr-${issueNumber}-${sha}`;
+            }
+            else {
+                throw new Error("Unable to establish if it's a merge on master or a push on a pull request or a comment on pull request!");
+            }
+        }
+        return `${repository}:${shaWithPrefix}`;
     });
 }
 function version() {
@@ -781,6 +831,7 @@ function getInputs() {
             repository: (0, core_1.getInput)('repository') || defaultRepository(),
             registries: (0, core_1.getMultilineInput)('registries'),
             skipDefaultTag: (0, core_1.getInput)('skip-default-tag') === 'true',
+            skipTagWithPrefix: (0, core_1.getInput)('skip-tag-with-prefix') === 'true',
             tags: yield getInputList('tags'),
             username: (0, core_1.getInput)('username'),
             authOnly: (0, core_1.getInput)('auth-only') === 'true',

@@ -18,6 +18,7 @@ export interface Inputs {
   repository: string;
   registries: string[];
   skipDefaultTag: boolean;
+  skipTagWithPrefix: boolean;
   tags: string[];
   username: string;
   authOnly: boolean;
@@ -47,6 +48,7 @@ export async function getInputs(): Promise<Inputs> {
     repository: getInput('repository') || defaultRepository(),
     registries: getMultilineInput('registries'),
     skipDefaultTag: getInput('skip-default-tag') === 'true',
+    skipTagWithPrefix: getInput('skip-tag-with-prefix') === 'true',
     tags: await getInputList('tags'),
     username: getInput('username'),
     authOnly: getInput('auth-only') === 'true',

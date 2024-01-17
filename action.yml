@@ -68,6 +68,13 @@ inputs:
     description: >
       This flag can be used to disable automatically tagging the image with the SHA.
       Skipping default tag requires specifying alternative tags.
+  skip-tag-with-prefix:
+    required: false
+    description: >
+      This flag can be used to disable automatically tagging images with prefixes
+      based on the type of build: on master or on pull rquest.
+      An image built from a pull request is tagged with pr-<number>-<SHA>.
+      An image built on merge to master branch is tagged with master-<SHA>.
   useqemu:
     required: false
     description: >
