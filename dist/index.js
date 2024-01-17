@@ -674,8 +674,10 @@ function getSHATagWithPrefix(repository) {
         }
         let shaWithPrefix;
         const ref = (event === null || event === void 0 ? void 0 : event.ref) || '';
-        if (ref !== '' && ref === `refs/heads/${default_branch}`) {
-            // on merge to default branch
+        const schedule = (event === null || event === void 0 ? void 0 : event.schedule) || '';
+        if ((ref !== '' && ref === `refs/heads/${default_branch}`) ||
+            schedule !== '') {
+            // on merge to default branch or on scheduled workflow
             shaWithPrefix = `${default_branch}-${sha}`;
         }
         else {
