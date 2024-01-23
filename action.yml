@@ -72,9 +72,10 @@ inputs:
     required: false
     description: >
       This flag can be used to disable automatically tagging images with prefixes
-      based on the type of build: on master or on pull rquest.
+      based on the type of build: on master branch or on pull rquest or when a tag is created in GitHub.
       An image built from a pull request is tagged with pr-<number>-<SHA>.
       An image built on merge to master branch is tagged with master-<SHA>.
+      An image built from a tag is tagged with tag-<SHA>.
   useqemu:
     required: false
     description: >

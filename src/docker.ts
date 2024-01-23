@@ -124,6 +124,9 @@ async function getSHATagWithPrefix(repository: string): Promise<string> {
   ) {
     // on merge to default branch or on scheduled workflow
     shaWithPrefix = `${default_branch}-${sha}`;
+  } else if (ref !== '' && ref.startsWith('refs/tags')) {
+    // on push to tags
+    shaWithPrefix = `tag-${sha}`;
   } else {
     // on pull request
     const number = event?.number;
@@ -134,7 +137,7 @@ async function getSHATagWithPrefix(repository: string): Promise<string> {
       shaWithPrefix = `pr-${issueNumber}-${sha}`;
     } else {
       throw new Error(
-        "Unable to establish if it's a merge on master or a push on a pull request or a comment on pull request!"
+        "Unable to establish if it's a merge on master or a push on a pull request or a comment on pull request or a push to tags!"
       );
     }
   }
