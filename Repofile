@@ -6,5 +6,11 @@
     "topics": [
         "github-action",
         "nodejs"
+    ],
+    "checks": [
+        "build",
+        "self-check",
+        "self-check-custom-tag",
+        "semantic-release"
     ]
 }
