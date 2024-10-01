@@ -37,7 +37,7 @@ jobs:
           gpg-key: ${{ secrets.TRADESHIFTCI_GPG_KEY }}
       
       - name: PR build changes if needed
-        uses: tradeshift/create-pull-request@v6
+        uses: tradeshift/create-pull-request@v7
         if: ${{ steps.diff.outcome != 'success' }}
         with:
           commit-message: "build: update dist folder"
