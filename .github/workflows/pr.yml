@@ -3,7 +3,7 @@ on: [pull_request]
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -28,7 +28,7 @@ jobs:
         run: git diff --quiet dist
 
   self-check:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +47,7 @@ jobs:
           docker pull ${{ steps.build.outputs.image }}
 
   self-check-custom-tag:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
