@@ -11,7 +11,10 @@ import {debug, endGroup, info, startGroup, warning} from '@actions/core';
 import {HttpClient} from '@actions/http-client';
 import {exec, getExecOutput} from '@actions/exec';
 
-export async function setup(builderName: string): Promise<void> {
+export async function setup(
+  builderName: string,
+  builderImage: string
+): Promise<void> {
   if (!(await isAvailable())) {
     await install();
   }
@@ -22,7 +25,7 @@ export async function setup(builderName: string): Promise<void> {
   if (!builderName) {
     builderName = `builder-${uuid.v4()}`;
     state.setBuilder(builderName);
-    await createBuilder(builderName);
+    await createBuilder(builderName, builderImage);
     await bootBuilder(builderName);
   }
   outputs.setBuilder(builderName);
@@ -44,7 +47,7 @@ export async function stop(builderName: string): Promise<void> {
   endGroup();
 }
 
-async function createBuilder(name: string): Promise<void> {
+async function createBuilder(name: string, image: string): Promise<void> {
   startGroup(`🔨 Creating a new builder instance`);
 
   const context = 'builders';
@@ -56,9 +59,14 @@ async function createBuilder(name: string): Promise<void> {
     '--name',
     name,
     '--driver',
-    'docker-container',
-    context
+    'docker-container'
   ];
+
+  if (image) {
+    args.push('--driver-opt', `image=${image}`);
+  }
+
+  args.push(context);
   await exec('docker', args);
 
   endGroup();

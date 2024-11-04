@@ -6,6 +6,7 @@ import {getInput, getMultilineInput} from '@actions/core';
 export interface Inputs {
   buildArgs: string[];
   builder: string;
+  builderImage: string;
   context: string;
   file: string;
   labels: string[];
@@ -36,6 +37,7 @@ export async function getInputs(): Promise<Inputs> {
   const inputs: Inputs = {
     buildArgs: await getInputList('build-args'),
     builder: getInput('builder'),
+    builderImage: getInput('builder-image'),
     context: getInput('context'),
     file: getInput('file'),
     labels: await getInputList('labels'),

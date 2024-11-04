@@ -8,6 +8,9 @@ inputs:
   builder:
     required: false
     description: buildx builder to use
+  builder-image:
+    required: false
+    description: buildx image to use
   context:
     required: false
     description: docker context
