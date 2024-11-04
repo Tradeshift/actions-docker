@@ -38,7 +38,7 @@ async function run(): Promise<void> {
     }
 
     await cache.restore(inputs);
-    await buildx.setup(inputs.builder);
+    await buildx.setup(inputs.builder, inputs.builderImage);
     const tag = await docker.build(inputs);
     if (inputs.push) {
       await buildx.inspect(tag);

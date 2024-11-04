@@ -243,7 +243,7 @@ const uuid = __importStar(__nccwpck_require__(2048));
 const core_1 = __nccwpck_require__(7484);
 const http_client_1 = __nccwpck_require__(4844);
 const exec_1 = __nccwpck_require__(5236);
-function setup(builderName) {
+function setup(builderName, builderImage) {
     return __awaiter(this, void 0, void 0, function* () {
         if (!(yield isAvailable())) {
             yield install();
@@ -253,7 +253,7 @@ function setup(builderName) {
         if (!builderName) {
             builderName = `builder-${uuid.v4()}`;
             state.setBuilder(builderName);
-            yield createBuilder(builderName);
+            yield createBuilder(builderName, builderImage);
             yield bootBuilder(builderName);
         }
         outputs.setBuilder(builderName);
@@ -275,7 +275,7 @@ function stop(builderName) {
     });
 }
 exports.stop = stop;
-function createBuilder(name) {
+function createBuilder(name, image) {
     return __awaiter(this, void 0, void 0, function* () {
         (0, core_1.startGroup)(`🔨 Creating a new builder instance`);
         const context = 'builders';
@@ -286,9 +286,12 @@ function createBuilder(name) {
             '--name',
             name,
             '--driver',
-            'docker-container',
-            context
+            'docker-container'
         ];
+        if (image) {
+            args.push('--driver-opt', `image=${image}`);
+        }
+        args.push(context);
         yield (0, exec_1.exec)('docker', args);
         (0, core_1.endGroup)();
     });
@@ -825,6 +828,7 @@ function getInputs() {
         const inputs = {
             buildArgs: yield getInputList('build-args'),
             builder: (0, core_1.getInput)('builder'),
+            builderImage: (0, core_1.getInput)('builder-image'),
             context: (0, core_1.getInput)('context'),
             file: (0, core_1.getInput)('file'),
             labels: yield getInputList('labels'),
@@ -960,7 +964,7 @@ function run() {
                 yield qemu.setup(registry);
             }
             yield cache.restore(inputs);
-            yield buildx.setup(inputs.builder);
+            yield buildx.setup(inputs.builder, inputs.builderImage);
             const tag = yield docker.build(inputs);
             if (inputs.push) {
                 yield buildx.inspect(tag);
