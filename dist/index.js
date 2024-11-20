@@ -577,6 +577,7 @@ function build(inputs) {
             throw new Error('No image tags specified. Default tag disabled and no tags specified');
         }
         const args = yield getBuildArgs(inputs, shaTag);
+        (0, core_1.info)(`Docker args: ${args.join(' ~ ')}`);
         const res = yield exec.getExecOutput('docker', args);
         if (res.stderr !== '' && res.exitCode) {
             throw new Error(`buildx call failed: ${res.stderr.trim()}`);

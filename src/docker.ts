@@ -16,6 +16,7 @@ export async function build(inputs: Inputs): Promise<string> {
     );
   }
   const args = await getBuildArgs(inputs, shaTag);
+  info(`Docker args: ${args.join(' ~ ')}`);
   const res = await exec.getExecOutput('docker', args);
   if (res.stderr !== '' && res.exitCode) {
     throw new Error(`buildx call failed: ${res.stderr.trim()}`);
