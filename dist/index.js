@@ -687,6 +687,10 @@ function getSHATagWithPrefix(repository) {
             // on push to tags
             shaWithPrefix = `tag-${sha}`;
         }
+        else if (ref.startsWith('refs/heads/release')) {
+            // on push to any release branch
+            shaWithPrefix = `release-${sha}`;
+        }
         else {
             // on pull request
             const number = event === null || event === void 0 ? void 0 : event.number;
@@ -698,7 +702,7 @@ function getSHATagWithPrefix(repository) {
                 shaWithPrefix = `pr-${issueNumber}-${sha}`;
             }
             else {
-                throw new Error("Unable to establish if it's a merge on master or a push on a pull request or a comment on pull request or a push to tags!");
+                throw new Error("Unable to establish if it's a merge on master/release or a push on a pull request or a comment on pull request or a push to tags!");
             }
         }
         return `${repository}:${shaWithPrefix}`;
