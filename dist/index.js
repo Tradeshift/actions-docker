@@ -1650,11 +1650,11 @@ const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const glob = __importStar(__nccwpck_require__(7206));
 const io = __importStar(__nccwpck_require__(4994));
-const crypto = __importStar(__nccwpck_require__(6982));
 const fs = __importStar(__nccwpck_require__(9896));
 const path = __importStar(__nccwpck_require__(6928));
 const semver = __importStar(__nccwpck_require__(3272));
 const util = __importStar(__nccwpck_require__(9023));
+const uuid_1 = __nccwpck_require__(2965);
 const constants_1 = __nccwpck_require__(8287);
 // From https://github.com/actions/toolkit/blob/main/packages/tool-cache/src/tool-cache.ts#L23
 function createTempDirectory() {
@@ -1677,7 +1677,7 @@ function createTempDirectory() {
             }
             tempDirectory = path.join(baseLocation, 'actions', 'temp');
         }
-        const dest = path.join(tempDirectory, crypto.randomUUID());
+        const dest = path.join(tempDirectory, (0, uuid_1.v4)());
         yield io.mkdirP(dest);
         return dest;
     });
@@ -4409,6 +4409,221 @@ function coerce (version, options) {
     '.' + (match[3] || '0') +
     '.' + (match[4] || '0'), options)
 }
+
+
+/***/ }),
+
+/***/ 2965:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var v1 = __nccwpck_require__(4584);
+var v4 = __nccwpck_require__(2299);
+
+var uuid = v4;
+uuid.v1 = v1;
+uuid.v4 = v4;
+
+module.exports = uuid;
+
+
+/***/ }),
+
+/***/ 5092:
+/***/ ((module) => {
+
+/**
+ * Convert array of 16 byte values to UUID string format of the form:
+ * XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+ */
+var byteToHex = [];
+for (var i = 0; i < 256; ++i) {
+  byteToHex[i] = (i + 0x100).toString(16).substr(1);
+}
+
+function bytesToUuid(buf, offset) {
+  var i = offset || 0;
+  var bth = byteToHex;
+  // join used to fix memory issue caused by concatenation: https://bugs.chromium.org/p/v8/issues/detail?id=3175#c4
+  return ([
+    bth[buf[i++]], bth[buf[i++]],
+    bth[buf[i++]], bth[buf[i++]], '-',
+    bth[buf[i++]], bth[buf[i++]], '-',
+    bth[buf[i++]], bth[buf[i++]], '-',
+    bth[buf[i++]], bth[buf[i++]], '-',
+    bth[buf[i++]], bth[buf[i++]],
+    bth[buf[i++]], bth[buf[i++]],
+    bth[buf[i++]], bth[buf[i++]]
+  ]).join('');
+}
+
+module.exports = bytesToUuid;
+
+
+/***/ }),
+
+/***/ 5600:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+// Unique ID creation requires a high quality random # generator.  In node.js
+// this is pretty straight-forward - we use the crypto API.
+
+var crypto = __nccwpck_require__(6982);
+
+module.exports = function nodeRNG() {
+  return crypto.randomBytes(16);
+};
+
+
+/***/ }),
+
+/***/ 4584:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var rng = __nccwpck_require__(5600);
+var bytesToUuid = __nccwpck_require__(5092);
+
+// **`v1()` - Generate time-based UUID**
+//
+// Inspired by https://github.com/LiosK/UUID.js
+// and http://docs.python.org/library/uuid.html
+
+var _nodeId;
+var _clockseq;
+
+// Previous uuid creation time
+var _lastMSecs = 0;
+var _lastNSecs = 0;
+
+// See https://github.com/uuidjs/uuid for API details
+function v1(options, buf, offset) {
+  var i = buf && offset || 0;
+  var b = buf || [];
+
+  options = options || {};
+  var node = options.node || _nodeId;
+  var clockseq = options.clockseq !== undefined ? options.clockseq : _clockseq;
+
+  // node and clockseq need to be initialized to random values if they're not
+  // specified.  We do this lazily to minimize issues related to insufficient
+  // system entropy.  See #189
+  if (node == null || clockseq == null) {
+    var seedBytes = rng();
+    if (node == null) {
+      // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+      node = _nodeId = [
+        seedBytes[0] | 0x01,
+        seedBytes[1], seedBytes[2], seedBytes[3], seedBytes[4], seedBytes[5]
+      ];
+    }
+    if (clockseq == null) {
+      // Per 4.2.2, randomize (14 bit) clockseq
+      clockseq = _clockseq = (seedBytes[6] << 8 | seedBytes[7]) & 0x3fff;
+    }
+  }
+
+  // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+  // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+  // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+  // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+  var msecs = options.msecs !== undefined ? options.msecs : new Date().getTime();
+
+  // Per 4.2.1.2, use count of uuid's generated during the current clock
+  // cycle to simulate higher resolution clock
+  var nsecs = options.nsecs !== undefined ? options.nsecs : _lastNSecs + 1;
+
+  // Time since last uuid creation (in msecs)
+  var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+  // Per 4.2.1.2, Bump clockseq on clock regression
+  if (dt < 0 && options.clockseq === undefined) {
+    clockseq = clockseq + 1 & 0x3fff;
+  }
+
+  // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+  // time interval
+  if ((dt < 0 || msecs > _lastMSecs) && options.nsecs === undefined) {
+    nsecs = 0;
+  }
+
+  // Per 4.2.1.2 Throw error if too many uuids are requested
+  if (nsecs >= 10000) {
+    throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+  }
+
+  _lastMSecs = msecs;
+  _lastNSecs = nsecs;
+  _clockseq = clockseq;
+
+  // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+  msecs += 12219292800000;
+
+  // `time_low`
+  var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+  b[i++] = tl >>> 24 & 0xff;
+  b[i++] = tl >>> 16 & 0xff;
+  b[i++] = tl >>> 8 & 0xff;
+  b[i++] = tl & 0xff;
+
+  // `time_mid`
+  var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+  b[i++] = tmh >>> 8 & 0xff;
+  b[i++] = tmh & 0xff;
+
+  // `time_high_and_version`
+  b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+  b[i++] = tmh >>> 16 & 0xff;
+
+  // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+  b[i++] = clockseq >>> 8 | 0x80;
+
+  // `clock_seq_low`
+  b[i++] = clockseq & 0xff;
+
+  // `node`
+  for (var n = 0; n < 6; ++n) {
+    b[i + n] = node[n];
+  }
+
+  return buf ? buf : bytesToUuid(b);
+}
+
+module.exports = v1;
+
+
+/***/ }),
+
+/***/ 2299:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+var rng = __nccwpck_require__(5600);
+var bytesToUuid = __nccwpck_require__(5092);
+
+function v4(options, buf, offset) {
+  var i = buf && offset || 0;
+
+  if (typeof(options) == 'string') {
+    buf = options === 'binary' ? new Array(16) : null;
+    options = null;
+  }
+  options = options || {};
+
+  var rnds = options.random || (options.rng || rng)();
+
+  // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+  rnds[6] = (rnds[6] & 0x0f) | 0x40;
+  rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+  // Copy bytes to buffer, if provided
+  if (buf) {
+    for (var ii = 0; ii < 16; ++ii) {
+      buf[i + ii] = rnds[ii];
+    }
+  }
+
+  return buf || bytesToUuid(rnds);
+}
+
+module.exports = v4;
 
 
 /***/ }),
@@ -58009,9 +58224,6 @@ function onceStrict (fn) {
 /***/ 9379:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const ANY = Symbol('SemVer ANY')
 // hoisted class for cyclic dependency
 class Comparator {
@@ -58160,11 +58372,6 @@ const Range = __nccwpck_require__(6782)
 /***/ 6782:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
-const SPACE_CHARACTERS = /\s+/g
-
 // hoisted class for cyclic dependency
 class Range {
   constructor (range, options) {
@@ -58185,7 +58392,7 @@ class Range {
       // just put it in the set and return
       this.raw = range.value
       this.set = [[range]]
-      this.formatted = undefined
+      this.format()
       return this
     }
 
@@ -58196,7 +58403,10 @@ class Range {
     // First reduce all whitespace as much as possible so we do not have to rely
     // on potentially slow regexes like \s*. This is then stored and used for
     // future error messages as well.
-    this.raw = range.trim().replace(SPACE_CHARACTERS, ' ')
+    this.raw = range
+      .trim()
+      .split(/\s+/)
+      .join(' ')
 
     // First, split on ||
     this.set = this.raw
@@ -58230,29 +58440,14 @@ class Range {
       }
     }
 
-    this.formatted = undefined
-  }
-
-  get range () {
-    if (this.formatted === undefined) {
-      this.formatted = ''
-      for (let i = 0; i < this.set.length; i++) {
-        if (i > 0) {
-          this.formatted += '||'
-        }
-        const comps = this.set[i]
-        for (let k = 0; k < comps.length; k++) {
-          if (k > 0) {
-            this.formatted += ' '
-          }
-          this.formatted += comps[k].toString().trim()
-        }
-      }
-    }
-    return this.formatted
+    this.format()
   }
 
   format () {
+    this.range = this.set
+      .map((comps) => comps.join(' ').trim())
+      .join('||')
+      .trim()
     return this.range
   }
 
@@ -58377,8 +58572,8 @@ class Range {
 
 module.exports = Range
 
-const LRU = __nccwpck_require__(1383)
-const cache = new LRU()
+const LRU = __nccwpck_require__(5882)
+const cache = new LRU({ max: 1000 })
 
 const parseOptions = __nccwpck_require__(356)
 const Comparator = __nccwpck_require__(9379)
@@ -58649,10 +58844,9 @@ const replaceGTE0 = (comp, options) => {
 // 1.2 - 3.4.5 => >=1.2.0 <=3.4.5
 // 1.2.3 - 3.4 => >=1.2.0 <3.5.0-0 Any 3.4.x will do
 // 1.2 - 3.4 => >=1.2.0 <3.5.0-0
-// TODO build?
 const hyphenReplace = incPr => ($0,
   from, fM, fm, fp, fpr, fb,
-  to, tM, tm, tp, tpr) => {
+  to, tM, tm, tp, tpr, tb) => {
   if (isX(fM)) {
     from = ''
   } else if (isX(fm)) {
@@ -58724,9 +58918,6 @@ const testSet = (set, version, options) => {
 /***/ 7163:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const debug = __nccwpck_require__(1159)
 const { MAX_LENGTH, MAX_SAFE_INTEGER } = __nccwpck_require__(5101)
 const { safeRe: re, t } = __nccwpck_require__(5471)
@@ -58739,7 +58930,7 @@ class SemVer {
 
     if (version instanceof SemVer) {
       if (version.loose === !!options.loose &&
-        version.includePrerelease === !!options.includePrerelease) {
+          version.includePrerelease === !!options.includePrerelease) {
         return version
       } else {
         version = version.version
@@ -58887,7 +59078,7 @@ class SemVer {
     do {
       const a = this.build[i]
       const b = other.build[i]
-      debug('build compare', i, a, b)
+      debug('prerelease compare', i, a, b)
       if (a === undefined && b === undefined) {
         return 0
       } else if (b === undefined) {
@@ -58905,19 +59096,6 @@ class SemVer {
   // preminor will bump the version up to the next minor release, and immediately
   // down to pre-release. premajor and prepatch work the same way.
   inc (release, identifier, identifierBase) {
-    if (release.startsWith('pre')) {
-      if (!identifier && identifierBase === false) {
-        throw new Error('invalid increment argument: identifier is empty')
-      }
-      // Avoid an invalid semver results
-      if (identifier) {
-        const match = `-${identifier}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE])
-        if (!match || match[1] !== identifier) {
-          throw new Error(`invalid identifier: ${identifier}`)
-        }
-      }
-    }
-
     switch (release) {
       case 'premajor':
         this.prerelease.length = 0
@@ -58947,12 +59125,6 @@ class SemVer {
           this.inc('patch', identifier, identifierBase)
         }
         this.inc('pre', identifier, identifierBase)
-        break
-      case 'release':
-        if (this.prerelease.length === 0) {
-          throw new Error(`version ${this.raw} is not a prerelease`)
-        }
-        this.prerelease.length = 0
         break
 
       case 'major':
@@ -58996,6 +59168,10 @@ class SemVer {
       // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
       case 'pre': {
         const base = Number(identifierBase) ? 1 : 0
+
+        if (!identifier && identifierBase === false) {
+          throw new Error('invalid increment argument: identifier is empty')
+        }
 
         if (this.prerelease.length === 0) {
           this.prerelease = [base]
@@ -59051,9 +59227,6 @@ module.exports = SemVer
 /***/ 1799:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const parse = __nccwpck_require__(6353)
 const clean = (version, options) => {
   const s = parse(version.trim().replace(/^[=v]+/, ''), options)
@@ -59066,9 +59239,6 @@ module.exports = clean
 
 /***/ 8646:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const eq = __nccwpck_require__(5082)
 const neq = __nccwpck_require__(4974)
@@ -59128,9 +59298,6 @@ module.exports = cmp
 
 /***/ 5385:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const parse = __nccwpck_require__(6353)
@@ -59199,9 +59366,6 @@ module.exports = coerce
 /***/ 7648:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const SemVer = __nccwpck_require__(7163)
 const compareBuild = (a, b, loose) => {
   const versionA = new SemVer(a, loose)
@@ -59216,9 +59380,6 @@ module.exports = compareBuild
 /***/ 6874:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const compareLoose = (a, b) => compare(a, b, true)
 module.exports = compareLoose
@@ -59228,9 +59389,6 @@ module.exports = compareLoose
 
 /***/ 8469:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const compare = (a, b, loose) =>
@@ -59243,9 +59401,6 @@ module.exports = compare
 
 /***/ 711:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const parse = __nccwpck_require__(6353)
 
@@ -59276,13 +59431,20 @@ const diff = (version1, version2) => {
       return 'major'
     }
 
-    // If the main part has no difference
-    if (lowVersion.compareMain(highVersion) === 0) {
-      if (lowVersion.minor && !lowVersion.patch) {
-        return 'minor'
-      }
+    // Otherwise it can be determined by checking the high version
+
+    if (highVersion.patch) {
+      // anything higher than a patch bump would result in the wrong version
       return 'patch'
     }
+
+    if (highVersion.minor) {
+      // anything higher than a minor bump would result in the wrong version
+      return 'minor'
+    }
+
+    // bumping major/minor/patch all have same result
+    return 'major'
   }
 
   // add the `pre` prefix if we are going to a prerelease version
@@ -59312,9 +59474,6 @@ module.exports = diff
 /***/ 5082:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const eq = (a, b, loose) => compare(a, b, loose) === 0
 module.exports = eq
@@ -59324,9 +59483,6 @@ module.exports = eq
 
 /***/ 6599:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const compare = __nccwpck_require__(8469)
 const gt = (a, b, loose) => compare(a, b, loose) > 0
@@ -59338,9 +59494,6 @@ module.exports = gt
 /***/ 1236:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const gte = (a, b, loose) => compare(a, b, loose) >= 0
 module.exports = gte
@@ -59350,9 +59503,6 @@ module.exports = gte
 
 /***/ 2338:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 
@@ -59380,9 +59530,6 @@ module.exports = inc
 /***/ 3872:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const lt = (a, b, loose) => compare(a, b, loose) < 0
 module.exports = lt
@@ -59392,9 +59539,6 @@ module.exports = lt
 
 /***/ 6717:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const compare = __nccwpck_require__(8469)
 const lte = (a, b, loose) => compare(a, b, loose) <= 0
@@ -59406,9 +59550,6 @@ module.exports = lte
 /***/ 8511:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const SemVer = __nccwpck_require__(7163)
 const major = (a, loose) => new SemVer(a, loose).major
 module.exports = major
@@ -59418,9 +59559,6 @@ module.exports = major
 
 /***/ 2603:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const minor = (a, loose) => new SemVer(a, loose).minor
@@ -59432,9 +59570,6 @@ module.exports = minor
 /***/ 4974:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const neq = (a, b, loose) => compare(a, b, loose) !== 0
 module.exports = neq
@@ -59444,9 +59579,6 @@ module.exports = neq
 
 /***/ 6353:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const parse = (version, options, throwErrors = false) => {
@@ -59471,9 +59603,6 @@ module.exports = parse
 /***/ 8756:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const SemVer = __nccwpck_require__(7163)
 const patch = (a, loose) => new SemVer(a, loose).patch
 module.exports = patch
@@ -59483,9 +59612,6 @@ module.exports = patch
 
 /***/ 5714:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const parse = __nccwpck_require__(6353)
 const prerelease = (version, options) => {
@@ -59500,9 +59626,6 @@ module.exports = prerelease
 /***/ 2173:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compare = __nccwpck_require__(8469)
 const rcompare = (a, b, loose) => compare(b, a, loose)
 module.exports = rcompare
@@ -59513,9 +59636,6 @@ module.exports = rcompare
 /***/ 7192:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compareBuild = __nccwpck_require__(7648)
 const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose))
 module.exports = rsort
@@ -59525,9 +59645,6 @@ module.exports = rsort
 
 /***/ 8011:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const Range = __nccwpck_require__(6782)
 const satisfies = (version, range, options) => {
@@ -59546,9 +59663,6 @@ module.exports = satisfies
 /***/ 9872:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const compareBuild = __nccwpck_require__(7648)
 const sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose))
 module.exports = sort
@@ -59558,9 +59672,6 @@ module.exports = sort
 
 /***/ 8780:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const parse = __nccwpck_require__(6353)
 const valid = (version, options) => {
@@ -59574,9 +59685,6 @@ module.exports = valid
 
 /***/ 2088:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 // just pre-load all the stuff that index.js lazily exports
 const internalRe = __nccwpck_require__(5471)
@@ -59674,9 +59782,6 @@ module.exports = {
 /***/ 5101:
 /***/ ((module) => {
 
-"use strict";
-
-
 // Note: this is the semver.org version of the spec that it implements
 // Not necessarily the package version of this code.
 const SEMVER_SPEC_VERSION = '2.0.0'
@@ -59719,9 +59824,6 @@ module.exports = {
 /***/ 1159:
 /***/ ((module) => {
 
-"use strict";
-
-
 const debug = (
   typeof process === 'object' &&
   process.env &&
@@ -59737,9 +59839,6 @@ module.exports = debug
 
 /***/ 3348:
 /***/ ((module) => {
-
-"use strict";
-
 
 const numeric = /^[0-9]+$/
 const compareIdentifiers = (a, b) => {
@@ -59768,61 +59867,8 @@ module.exports = {
 
 /***/ }),
 
-/***/ 1383:
-/***/ ((module) => {
-
-"use strict";
-
-
-class LRUCache {
-  constructor () {
-    this.max = 1000
-    this.map = new Map()
-  }
-
-  get (key) {
-    const value = this.map.get(key)
-    if (value === undefined) {
-      return undefined
-    } else {
-      // Remove the key from the map and add it to the end
-      this.map.delete(key)
-      this.map.set(key, value)
-      return value
-    }
-  }
-
-  delete (key) {
-    return this.map.delete(key)
-  }
-
-  set (key, value) {
-    const deleted = this.delete(key)
-
-    if (!deleted && value !== undefined) {
-      // If cache is full, delete the least recently used item
-      if (this.map.size >= this.max) {
-        const firstKey = this.map.keys().next().value
-        this.delete(firstKey)
-      }
-
-      this.map.set(key, value)
-    }
-
-    return this
-  }
-}
-
-module.exports = LRUCache
-
-
-/***/ }),
-
 /***/ 356:
 /***/ ((module) => {
-
-"use strict";
-
 
 // parse out just the options we care about
 const looseOption = Object.freeze({ loose: true })
@@ -59846,9 +59892,6 @@ module.exports = parseOptions
 /***/ 5471:
 /***/ ((module, exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const {
   MAX_SAFE_COMPONENT_LENGTH,
   MAX_SAFE_BUILD_LENGTH,
@@ -59861,7 +59904,6 @@ exports = module.exports = {}
 const re = exports.re = []
 const safeRe = exports.safeRe = []
 const src = exports.src = []
-const safeSrc = exports.safeSrc = []
 const t = exports.t = {}
 let R = 0
 
@@ -59894,7 +59936,6 @@ const createToken = (name, value, isGlobal) => {
   debug(name, index, value)
   t[name] = index
   src[index] = value
-  safeSrc[index] = safe
   re[index] = new RegExp(value, isGlobal ? 'g' : undefined)
   safeRe[index] = new RegExp(safe, isGlobal ? 'g' : undefined)
 }
@@ -59927,14 +59968,12 @@ createToken('MAINVERSIONLOOSE', `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.` +
 
 // ## Pre-release Version Identifier
 // A numeric identifier, or a non-numeric identifier.
-// Non-numberic identifiers include numberic identifiers but can be longer.
-// Therefore non-numberic identifiers must go first.
 
-createToken('PRERELEASEIDENTIFIER', `(?:${src[t.NONNUMERICIDENTIFIER]
-}|${src[t.NUMERICIDENTIFIER]})`)
+createToken('PRERELEASEIDENTIFIER', `(?:${src[t.NUMERICIDENTIFIER]
+}|${src[t.NONNUMERICIDENTIFIER]})`)
 
-createToken('PRERELEASEIDENTIFIERLOOSE', `(?:${src[t.NONNUMERICIDENTIFIER]
-}|${src[t.NUMERICIDENTIFIERLOOSE]})`)
+createToken('PRERELEASEIDENTIFIERLOOSE', `(?:${src[t.NUMERICIDENTIFIERLOOSE]
+}|${src[t.NONNUMERICIDENTIFIER]})`)
 
 // ## Pre-release Version
 // Hyphen, followed by one or more dot-separated pre-release version
@@ -60074,11 +60113,800 @@ createToken('GTE0PRE', '^\\s*>=\\s*0\\.0\\.0-0\\s*$')
 
 /***/ }),
 
-/***/ 2276:
+/***/ 5882:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 "use strict";
 
+
+// A linked list to keep track of recently-used-ness
+const Yallist = __nccwpck_require__(88)
+
+const MAX = Symbol('max')
+const LENGTH = Symbol('length')
+const LENGTH_CALCULATOR = Symbol('lengthCalculator')
+const ALLOW_STALE = Symbol('allowStale')
+const MAX_AGE = Symbol('maxAge')
+const DISPOSE = Symbol('dispose')
+const NO_DISPOSE_ON_SET = Symbol('noDisposeOnSet')
+const LRU_LIST = Symbol('lruList')
+const CACHE = Symbol('cache')
+const UPDATE_AGE_ON_GET = Symbol('updateAgeOnGet')
+
+const naiveLength = () => 1
+
+// lruList is a yallist where the head is the youngest
+// item, and the tail is the oldest.  the list contains the Hit
+// objects as the entries.
+// Each Hit object has a reference to its Yallist.Node.  This
+// never changes.
+//
+// cache is a Map (or PseudoMap) that matches the keys to
+// the Yallist.Node object.
+class LRUCache {
+  constructor (options) {
+    if (typeof options === 'number')
+      options = { max: options }
+
+    if (!options)
+      options = {}
+
+    if (options.max && (typeof options.max !== 'number' || options.max < 0))
+      throw new TypeError('max must be a non-negative number')
+    // Kind of weird to have a default max of Infinity, but oh well.
+    const max = this[MAX] = options.max || Infinity
+
+    const lc = options.length || naiveLength
+    this[LENGTH_CALCULATOR] = (typeof lc !== 'function') ? naiveLength : lc
+    this[ALLOW_STALE] = options.stale || false
+    if (options.maxAge && typeof options.maxAge !== 'number')
+      throw new TypeError('maxAge must be a number')
+    this[MAX_AGE] = options.maxAge || 0
+    this[DISPOSE] = options.dispose
+    this[NO_DISPOSE_ON_SET] = options.noDisposeOnSet || false
+    this[UPDATE_AGE_ON_GET] = options.updateAgeOnGet || false
+    this.reset()
+  }
+
+  // resize the cache when the max changes.
+  set max (mL) {
+    if (typeof mL !== 'number' || mL < 0)
+      throw new TypeError('max must be a non-negative number')
+
+    this[MAX] = mL || Infinity
+    trim(this)
+  }
+  get max () {
+    return this[MAX]
+  }
+
+  set allowStale (allowStale) {
+    this[ALLOW_STALE] = !!allowStale
+  }
+  get allowStale () {
+    return this[ALLOW_STALE]
+  }
+
+  set maxAge (mA) {
+    if (typeof mA !== 'number')
+      throw new TypeError('maxAge must be a non-negative number')
+
+    this[MAX_AGE] = mA
+    trim(this)
+  }
+  get maxAge () {
+    return this[MAX_AGE]
+  }
+
+  // resize the cache when the lengthCalculator changes.
+  set lengthCalculator (lC) {
+    if (typeof lC !== 'function')
+      lC = naiveLength
+
+    if (lC !== this[LENGTH_CALCULATOR]) {
+      this[LENGTH_CALCULATOR] = lC
+      this[LENGTH] = 0
+      this[LRU_LIST].forEach(hit => {
+        hit.length = this[LENGTH_CALCULATOR](hit.value, hit.key)
+        this[LENGTH] += hit.length
+      })
+    }
+    trim(this)
+  }
+  get lengthCalculator () { return this[LENGTH_CALCULATOR] }
+
+  get length () { return this[LENGTH] }
+  get itemCount () { return this[LRU_LIST].length }
+
+  rforEach (fn, thisp) {
+    thisp = thisp || this
+    for (let walker = this[LRU_LIST].tail; walker !== null;) {
+      const prev = walker.prev
+      forEachStep(this, fn, walker, thisp)
+      walker = prev
+    }
+  }
+
+  forEach (fn, thisp) {
+    thisp = thisp || this
+    for (let walker = this[LRU_LIST].head; walker !== null;) {
+      const next = walker.next
+      forEachStep(this, fn, walker, thisp)
+      walker = next
+    }
+  }
+
+  keys () {
+    return this[LRU_LIST].toArray().map(k => k.key)
+  }
+
+  values () {
+    return this[LRU_LIST].toArray().map(k => k.value)
+  }
+
+  reset () {
+    if (this[DISPOSE] &&
+        this[LRU_LIST] &&
+        this[LRU_LIST].length) {
+      this[LRU_LIST].forEach(hit => this[DISPOSE](hit.key, hit.value))
+    }
+
+    this[CACHE] = new Map() // hash of items by key
+    this[LRU_LIST] = new Yallist() // list of items in order of use recency
+    this[LENGTH] = 0 // length of items in the list
+  }
+
+  dump () {
+    return this[LRU_LIST].map(hit =>
+      isStale(this, hit) ? false : {
+        k: hit.key,
+        v: hit.value,
+        e: hit.now + (hit.maxAge || 0)
+      }).toArray().filter(h => h)
+  }
+
+  dumpLru () {
+    return this[LRU_LIST]
+  }
+
+  set (key, value, maxAge) {
+    maxAge = maxAge || this[MAX_AGE]
+
+    if (maxAge && typeof maxAge !== 'number')
+      throw new TypeError('maxAge must be a number')
+
+    const now = maxAge ? Date.now() : 0
+    const len = this[LENGTH_CALCULATOR](value, key)
+
+    if (this[CACHE].has(key)) {
+      if (len > this[MAX]) {
+        del(this, this[CACHE].get(key))
+        return false
+      }
+
+      const node = this[CACHE].get(key)
+      const item = node.value
+
+      // dispose of the old one before overwriting
+      // split out into 2 ifs for better coverage tracking
+      if (this[DISPOSE]) {
+        if (!this[NO_DISPOSE_ON_SET])
+          this[DISPOSE](key, item.value)
+      }
+
+      item.now = now
+      item.maxAge = maxAge
+      item.value = value
+      this[LENGTH] += len - item.length
+      item.length = len
+      this.get(key)
+      trim(this)
+      return true
+    }
+
+    const hit = new Entry(key, value, len, now, maxAge)
+
+    // oversized objects fall out of cache automatically.
+    if (hit.length > this[MAX]) {
+      if (this[DISPOSE])
+        this[DISPOSE](key, value)
+
+      return false
+    }
+
+    this[LENGTH] += hit.length
+    this[LRU_LIST].unshift(hit)
+    this[CACHE].set(key, this[LRU_LIST].head)
+    trim(this)
+    return true
+  }
+
+  has (key) {
+    if (!this[CACHE].has(key)) return false
+    const hit = this[CACHE].get(key).value
+    return !isStale(this, hit)
+  }
+
+  get (key) {
+    return get(this, key, true)
+  }
+
+  peek (key) {
+    return get(this, key, false)
+  }
+
+  pop () {
+    const node = this[LRU_LIST].tail
+    if (!node)
+      return null
+
+    del(this, node)
+    return node.value
+  }
+
+  del (key) {
+    del(this, this[CACHE].get(key))
+  }
+
+  load (arr) {
+    // reset the cache
+    this.reset()
+
+    const now = Date.now()
+    // A previous serialized cache has the most recent items first
+    for (let l = arr.length - 1; l >= 0; l--) {
+      const hit = arr[l]
+      const expiresAt = hit.e || 0
+      if (expiresAt === 0)
+        // the item was created without expiration in a non aged cache
+        this.set(hit.k, hit.v)
+      else {
+        const maxAge = expiresAt - now
+        // dont add already expired items
+        if (maxAge > 0) {
+          this.set(hit.k, hit.v, maxAge)
+        }
+      }
+    }
+  }
+
+  prune () {
+    this[CACHE].forEach((value, key) => get(this, key, false))
+  }
+}
+
+const get = (self, key, doUse) => {
+  const node = self[CACHE].get(key)
+  if (node) {
+    const hit = node.value
+    if (isStale(self, hit)) {
+      del(self, node)
+      if (!self[ALLOW_STALE])
+        return undefined
+    } else {
+      if (doUse) {
+        if (self[UPDATE_AGE_ON_GET])
+          node.value.now = Date.now()
+        self[LRU_LIST].unshiftNode(node)
+      }
+    }
+    return hit.value
+  }
+}
+
+const isStale = (self, hit) => {
+  if (!hit || (!hit.maxAge && !self[MAX_AGE]))
+    return false
+
+  const diff = Date.now() - hit.now
+  return hit.maxAge ? diff > hit.maxAge
+    : self[MAX_AGE] && (diff > self[MAX_AGE])
+}
+
+const trim = self => {
+  if (self[LENGTH] > self[MAX]) {
+    for (let walker = self[LRU_LIST].tail;
+      self[LENGTH] > self[MAX] && walker !== null;) {
+      // We know that we're about to delete this one, and also
+      // what the next least recently used key will be, so just
+      // go ahead and set it now.
+      const prev = walker.prev
+      del(self, walker)
+      walker = prev
+    }
+  }
+}
+
+const del = (self, node) => {
+  if (node) {
+    const hit = node.value
+    if (self[DISPOSE])
+      self[DISPOSE](hit.key, hit.value)
+
+    self[LENGTH] -= hit.length
+    self[CACHE].delete(hit.key)
+    self[LRU_LIST].removeNode(node)
+  }
+}
+
+class Entry {
+  constructor (key, value, length, now, maxAge) {
+    this.key = key
+    this.value = value
+    this.length = length
+    this.now = now
+    this.maxAge = maxAge || 0
+  }
+}
+
+const forEachStep = (self, fn, node, thisp) => {
+  let hit = node.value
+  if (isStale(self, hit)) {
+    del(self, node)
+    if (!self[ALLOW_STALE])
+      hit = undefined
+  }
+  if (hit)
+    fn.call(thisp, hit.value, hit.key, self)
+}
+
+module.exports = LRUCache
+
+
+/***/ }),
+
+/***/ 8426:
+/***/ ((module) => {
+
+"use strict";
+
+module.exports = function (Yallist) {
+  Yallist.prototype[Symbol.iterator] = function* () {
+    for (let walker = this.head; walker; walker = walker.next) {
+      yield walker.value
+    }
+  }
+}
+
+
+/***/ }),
+
+/***/ 88:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+module.exports = Yallist
+
+Yallist.Node = Node
+Yallist.create = Yallist
+
+function Yallist (list) {
+  var self = this
+  if (!(self instanceof Yallist)) {
+    self = new Yallist()
+  }
+
+  self.tail = null
+  self.head = null
+  self.length = 0
+
+  if (list && typeof list.forEach === 'function') {
+    list.forEach(function (item) {
+      self.push(item)
+    })
+  } else if (arguments.length > 0) {
+    for (var i = 0, l = arguments.length; i < l; i++) {
+      self.push(arguments[i])
+    }
+  }
+
+  return self
+}
+
+Yallist.prototype.removeNode = function (node) {
+  if (node.list !== this) {
+    throw new Error('removing node which does not belong to this list')
+  }
+
+  var next = node.next
+  var prev = node.prev
+
+  if (next) {
+    next.prev = prev
+  }
+
+  if (prev) {
+    prev.next = next
+  }
+
+  if (node === this.head) {
+    this.head = next
+  }
+  if (node === this.tail) {
+    this.tail = prev
+  }
+
+  node.list.length--
+  node.next = null
+  node.prev = null
+  node.list = null
+
+  return next
+}
+
+Yallist.prototype.unshiftNode = function (node) {
+  if (node === this.head) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node)
+  }
+
+  var head = this.head
+  node.list = this
+  node.next = head
+  if (head) {
+    head.prev = node
+  }
+
+  this.head = node
+  if (!this.tail) {
+    this.tail = node
+  }
+  this.length++
+}
+
+Yallist.prototype.pushNode = function (node) {
+  if (node === this.tail) {
+    return
+  }
+
+  if (node.list) {
+    node.list.removeNode(node)
+  }
+
+  var tail = this.tail
+  node.list = this
+  node.prev = tail
+  if (tail) {
+    tail.next = node
+  }
+
+  this.tail = node
+  if (!this.head) {
+    this.head = node
+  }
+  this.length++
+}
+
+Yallist.prototype.push = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    push(this, arguments[i])
+  }
+  return this.length
+}
+
+Yallist.prototype.unshift = function () {
+  for (var i = 0, l = arguments.length; i < l; i++) {
+    unshift(this, arguments[i])
+  }
+  return this.length
+}
+
+Yallist.prototype.pop = function () {
+  if (!this.tail) {
+    return undefined
+  }
+
+  var res = this.tail.value
+  this.tail = this.tail.prev
+  if (this.tail) {
+    this.tail.next = null
+  } else {
+    this.head = null
+  }
+  this.length--
+  return res
+}
+
+Yallist.prototype.shift = function () {
+  if (!this.head) {
+    return undefined
+  }
+
+  var res = this.head.value
+  this.head = this.head.next
+  if (this.head) {
+    this.head.prev = null
+  } else {
+    this.tail = null
+  }
+  this.length--
+  return res
+}
+
+Yallist.prototype.forEach = function (fn, thisp) {
+  thisp = thisp || this
+  for (var walker = this.head, i = 0; walker !== null; i++) {
+    fn.call(thisp, walker.value, i, this)
+    walker = walker.next
+  }
+}
+
+Yallist.prototype.forEachReverse = function (fn, thisp) {
+  thisp = thisp || this
+  for (var walker = this.tail, i = this.length - 1; walker !== null; i--) {
+    fn.call(thisp, walker.value, i, this)
+    walker = walker.prev
+  }
+}
+
+Yallist.prototype.get = function (n) {
+  for (var i = 0, walker = this.head; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.next
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+}
+
+Yallist.prototype.getReverse = function (n) {
+  for (var i = 0, walker = this.tail; walker !== null && i < n; i++) {
+    // abort out of the list early if we hit a cycle
+    walker = walker.prev
+  }
+  if (i === n && walker !== null) {
+    return walker.value
+  }
+}
+
+Yallist.prototype.map = function (fn, thisp) {
+  thisp = thisp || this
+  var res = new Yallist()
+  for (var walker = this.head; walker !== null;) {
+    res.push(fn.call(thisp, walker.value, this))
+    walker = walker.next
+  }
+  return res
+}
+
+Yallist.prototype.mapReverse = function (fn, thisp) {
+  thisp = thisp || this
+  var res = new Yallist()
+  for (var walker = this.tail; walker !== null;) {
+    res.push(fn.call(thisp, walker.value, this))
+    walker = walker.prev
+  }
+  return res
+}
+
+Yallist.prototype.reduce = function (fn, initial) {
+  var acc
+  var walker = this.head
+  if (arguments.length > 1) {
+    acc = initial
+  } else if (this.head) {
+    walker = this.head.next
+    acc = this.head.value
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = 0; walker !== null; i++) {
+    acc = fn(acc, walker.value, i)
+    walker = walker.next
+  }
+
+  return acc
+}
+
+Yallist.prototype.reduceReverse = function (fn, initial) {
+  var acc
+  var walker = this.tail
+  if (arguments.length > 1) {
+    acc = initial
+  } else if (this.tail) {
+    walker = this.tail.prev
+    acc = this.tail.value
+  } else {
+    throw new TypeError('Reduce of empty list with no initial value')
+  }
+
+  for (var i = this.length - 1; walker !== null; i--) {
+    acc = fn(acc, walker.value, i)
+    walker = walker.prev
+  }
+
+  return acc
+}
+
+Yallist.prototype.toArray = function () {
+  var arr = new Array(this.length)
+  for (var i = 0, walker = this.head; walker !== null; i++) {
+    arr[i] = walker.value
+    walker = walker.next
+  }
+  return arr
+}
+
+Yallist.prototype.toArrayReverse = function () {
+  var arr = new Array(this.length)
+  for (var i = 0, walker = this.tail; walker !== null; i++) {
+    arr[i] = walker.value
+    walker = walker.prev
+  }
+  return arr
+}
+
+Yallist.prototype.slice = function (from, to) {
+  to = to || this.length
+  if (to < 0) {
+    to += this.length
+  }
+  from = from || 0
+  if (from < 0) {
+    from += this.length
+  }
+  var ret = new Yallist()
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0
+  }
+  if (to > this.length) {
+    to = this.length
+  }
+  for (var i = 0, walker = this.head; walker !== null && i < from; i++) {
+    walker = walker.next
+  }
+  for (; walker !== null && i < to; i++, walker = walker.next) {
+    ret.push(walker.value)
+  }
+  return ret
+}
+
+Yallist.prototype.sliceReverse = function (from, to) {
+  to = to || this.length
+  if (to < 0) {
+    to += this.length
+  }
+  from = from || 0
+  if (from < 0) {
+    from += this.length
+  }
+  var ret = new Yallist()
+  if (to < from || to < 0) {
+    return ret
+  }
+  if (from < 0) {
+    from = 0
+  }
+  if (to > this.length) {
+    to = this.length
+  }
+  for (var i = this.length, walker = this.tail; walker !== null && i > to; i--) {
+    walker = walker.prev
+  }
+  for (; walker !== null && i > from; i--, walker = walker.prev) {
+    ret.push(walker.value)
+  }
+  return ret
+}
+
+Yallist.prototype.splice = function (start, deleteCount, ...nodes) {
+  if (start > this.length) {
+    start = this.length - 1
+  }
+  if (start < 0) {
+    start = this.length + start;
+  }
+
+  for (var i = 0, walker = this.head; walker !== null && i < start; i++) {
+    walker = walker.next
+  }
+
+  var ret = []
+  for (var i = 0; walker && i < deleteCount; i++) {
+    ret.push(walker.value)
+    walker = this.removeNode(walker)
+  }
+  if (walker === null) {
+    walker = this.tail
+  }
+
+  if (walker !== this.head && walker !== this.tail) {
+    walker = walker.prev
+  }
+
+  for (var i = 0; i < nodes.length; i++) {
+    walker = insert(this, walker, nodes[i])
+  }
+  return ret;
+}
+
+Yallist.prototype.reverse = function () {
+  var head = this.head
+  var tail = this.tail
+  for (var walker = head; walker !== null; walker = walker.prev) {
+    var p = walker.prev
+    walker.prev = walker.next
+    walker.next = p
+  }
+  this.head = tail
+  this.tail = head
+  return this
+}
+
+function insert (self, node, value) {
+  var inserted = node === self.head ?
+    new Node(value, null, node, self) :
+    new Node(value, node, node.next, self)
+
+  if (inserted.next === null) {
+    self.tail = inserted
+  }
+  if (inserted.prev === null) {
+    self.head = inserted
+  }
+
+  self.length++
+
+  return inserted
+}
+
+function push (self, item) {
+  self.tail = new Node(item, self.tail, null, self)
+  if (!self.head) {
+    self.head = self.tail
+  }
+  self.length++
+}
+
+function unshift (self, item) {
+  self.head = new Node(item, null, self.head, self)
+  if (!self.tail) {
+    self.tail = self.head
+  }
+  self.length++
+}
+
+function Node (value, prev, next, list) {
+  if (!(this instanceof Node)) {
+    return new Node(value, prev, next, list)
+  }
+
+  this.list = list
+  this.value = value
+
+  if (prev) {
+    prev.next = this
+    this.prev = prev
+  } else {
+    this.prev = null
+  }
+
+  if (next) {
+    next.prev = this
+    this.next = next
+  } else {
+    this.next = null
+  }
+}
+
+try {
+  // add if support for Symbol.iterator is present
+  __nccwpck_require__(8426)(Yallist)
+} catch (er) {}
+
+
+/***/ }),
+
+/***/ 2276:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
 // Determine if version is greater than all the versions possible in the range.
 const outside = __nccwpck_require__(280)
@@ -60090,9 +60918,6 @@ module.exports = gtr
 
 /***/ 3465:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const Range = __nccwpck_require__(6782)
 const intersects = (r1, r2, options) => {
@@ -60108,9 +60933,6 @@ module.exports = intersects
 /***/ 5213:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const outside = __nccwpck_require__(280)
 // Determine if version is less than all the versions possible in the range
 const ltr = (version, range, options) => outside(version, range, '<', options)
@@ -60121,9 +60943,6 @@ module.exports = ltr
 
 /***/ 5574:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const Range = __nccwpck_require__(6782)
@@ -60157,9 +60976,6 @@ module.exports = maxSatisfying
 /***/ 8595:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const SemVer = __nccwpck_require__(7163)
 const Range = __nccwpck_require__(6782)
 const minSatisfying = (versions, range, options) => {
@@ -60190,9 +61006,6 @@ module.exports = minSatisfying
 
 /***/ 1866:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const Range = __nccwpck_require__(6782)
@@ -60261,9 +61074,6 @@ module.exports = minVersion
 
 /***/ 280:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const SemVer = __nccwpck_require__(7163)
 const Comparator = __nccwpck_require__(9379)
@@ -60352,9 +61162,6 @@ module.exports = outside
 /***/ 2028:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 // given a set of versions and a range, create a "simplified" range
 // that includes the same versions that the original range does
 // If the original range is shorter than the simplified one, return that.
@@ -60408,9 +61215,6 @@ module.exports = (versions, range, options) => {
 
 /***/ 1489:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const Range = __nccwpck_require__(6782)
 const Comparator = __nccwpck_require__(9379)
@@ -60666,9 +61470,6 @@ module.exports = subset
 /***/ 4750:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
-"use strict";
-
-
 const Range = __nccwpck_require__(6782)
 
 // Mostly just for testing and legacy API reasons
@@ -60683,9 +61484,6 @@ module.exports = toComparators
 
 /***/ 4737:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
-
-"use strict";
-
 
 const Range = __nccwpck_require__(6782)
 const validRange = (range, options) => {
