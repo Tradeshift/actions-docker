@@ -10,7 +10,7 @@ jobs:
     outputs:
       needs-update: ${{ steps.diff.outcome != 'success' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/cache@v5
         with:
           path: ~/.npm
@@ -62,7 +62,7 @@ jobs:
     needs: [build]
     if: ${{ needs.build.outputs.needs-update != 'true' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: tradeshift/actions-semantic-release@v2
         id: semantic-release
         with:
