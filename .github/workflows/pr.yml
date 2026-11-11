@@ -5,10 +5,10 @@ jobs:
   build:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - uses: actions/cache@v5
+      - uses: actions/cache@v5.1.0
         with:
           path: ~/.npm
           key: npm-${{ hashFiles('package-lock.json') }}
@@ -30,7 +30,7 @@ jobs:
   self-check:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -50,7 +50,7 @@ jobs:
   self-check-custom-tag:
     runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
@@ -81,11 +81,11 @@ jobs:
   semantic-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Dry-run release
-        uses: tradeshift/actions-semantic-release@v2
+        uses: tradeshift/actions-semantic-release@v2.1.0
         id: semantic-release
         with:
           dry_run: true
@@ -93,4 +93,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Lint commit messages
-        uses: tradeshift/commitlint-github-action@v5
+        uses: tradeshift/commitlint-github-action@v5.4.5
